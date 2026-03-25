@@ -1,0 +1,12 @@
+node_modules/
+certs/
+*.crt
+*.key
+*.pem
+logs/
+*.log
+src/assets/vehiculos
+src/assets/zonas
+.env
+eslint.config.js
+.prettierrc
