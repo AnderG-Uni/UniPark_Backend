@@ -49,7 +49,12 @@ class AuthService {
 
       return nuevoAccessToken;
     } catch (error) {
-      throw new ApiError(403, 'Refresh Token inválido o expirado');
+      console.error({
+        message: 'Error al renovar token',
+        error: error.message,
+        stack: error.stack
+      });
+      throw new ApiError(403, 'Refresh: Token inválido o expirado');
     }
   }
 }

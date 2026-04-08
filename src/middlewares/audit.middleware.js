@@ -3,12 +3,12 @@ const fastRedact = require('fast-redact');
 
 const redact = fastRedact({
   paths: ['clave', 'password', 'token', 'accessToken', 'refreshToken', '*.clave', '*.password'],
-  censor: '***OCULTO_POR_SEGURIDAD***',
+  censor: '***OCULTO-POR-SEGURIDAD***',
   serialize: false
 });
 
 const auditMiddleware = (req, res, next) => {
-  // Función dinámica que evalúa al usuario AL FINAL de la petición
+  // Función dinámica que evalúa al usuario al final de la petición
   const obtenerInfoUsuario = () => {
     // 1. Si pasó por un middleware de token (Rutas protegidas o creando Guardas)
     if (req.usuario) {
@@ -48,6 +48,11 @@ const auditMiddleware = (req, res, next) => {
     try {
       safeReqBody = redact(JSON.parse(JSON.stringify(req.body)));
     } catch (e) {
+      console.error({
+        message: 'Error al procesar la solicitud',
+        error: e.message,
+        stack: e.stack
+      });
       safeReqBody = '[Error al procesar body]';
     }
   }
@@ -58,6 +63,11 @@ const auditMiddleware = (req, res, next) => {
       try {
         safeResBody = redact(JSON.parse(JSON.stringify(bodyResponse)));
       } catch (e) {
+        console.error({
+          message: 'Error al procesar la respuesta',
+          error: e.message,
+          stack: e.stack
+        });
         safeResBody = '[Error al procesar body]';
       }
     }

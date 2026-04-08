@@ -15,10 +15,10 @@ const pool = new Pool({
     key: fs.readFileSync(path.join(__dirname, '../../certs/client.key')).toString(),
     cert: fs.readFileSync(path.join(__dirname, '../../certs/client.crt')).toString(),
 
-    // Evita el error de mismatch de IP/Hostname 
-    // Se agrega este parametro por que el certificado es para un hostname específico, pero la conexión se hace por IP. 
+    // Evita el error de mismatch de IP/Hostname
+    // Se agrega este parametro por que el certificado es para un hostname específico, pero la conexión se hace por IP.
     // Esto es seguro porque rejectUnauthorized ya verifica el certificado.
-    checkServerIdentity: (hostname, cert) => {
+    checkServerIdentity: () => {
       // Retornar undefined significa que nosotros aprobamos la identidad del servidor.
       return undefined;
     }

@@ -43,14 +43,14 @@ const transportAudit = new DailyRotateFile({
 });
 
 // Se crea el logger de auditoría con formato JSON puro para facilitar su análisis posterior,
-// se almacena en un archivo separado para mantener la claridad entre los logs de sistema y los de auditoría. 
-// Este logger se utilizará exclusivamente para registrar eventos de auditoría, como accesos, 
+// se almacena en un archivo separado para mantener la claridad entre los logs de sistema y los de auditoría.
+// Este logger se utilizará exclusivamente para registrar eventos de auditoría, como accesos,
 // cambios críticos y otras acciones relevantes para la seguridad y el cumplimiento normativo.
 const auditLogger = createLogger({
   level: 'info',
   format: format.combine(
-    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),  // Agrega una marca de tiempo a cada entrada de log
-    format.printf((info) => JSON.stringify(info, null, 2))  //formato json identado para facilitar su lectura y análisis posterior
+    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), // Agrega una marca de tiempo a cada entrada de log
+    format.printf((info) => JSON.stringify(info, null, 2)) //formato json identado para facilitar su lectura y análisis posterior
   ),
   transports: [transportAudit]
 });
