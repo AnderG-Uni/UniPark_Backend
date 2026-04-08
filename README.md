@@ -1,6 +1,8 @@
 # UniPark V2 - Backend API RESTful
 
-Bienvenido al repositorio oficial del Backend de **UniPark V2**, un sistema integral de control de acceso, gestión de infraestructura de parqueaderos e inteligencia de negocios (Business Intelligence).
+Bienvenido al repositorio oficial del Backend de **UniPark V2**, un sistema integral de control de acceso, gestión de infraestructura de parqueaderos.
+
+Se busca controlar eficientemente el control vehicular de las sedes de la universidad con un sistema que cumple con altos estandares de calidad y seguridad de la industria.
 
 ---
 
@@ -11,6 +13,7 @@ Bienvenido al repositorio oficial del Backend de **UniPark V2**, un sistema inte
 - **Autenticación:** JWT
 - **Header:** `Authorization: Bearer <token>`
 - **Control de Acceso:** PBAC por roles
+- **Auditoria de Logs** Logs de aplicación y servicio
 
 ---
 
@@ -43,6 +46,8 @@ server.js
 - PostgreSQL
 - JWT
 - PBAC
+- Canvas
+- Qr code
 
 ---
 
