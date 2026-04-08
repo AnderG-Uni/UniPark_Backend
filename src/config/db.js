@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const pool = new Pool({
+  //Los datos de conexión se toman de las variables de entorno para mayor seguridad y flexibilidad
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
   database: process.env.DB_NAME,
@@ -14,10 +15,11 @@ const pool = new Pool({
     key: fs.readFileSync(path.join(__dirname, '../../certs/client.key')).toString(),
     cert: fs.readFileSync(path.join(__dirname, '../../certs/client.crt')).toString(),
 
-    // --- Evita el error de mismatch de IP/Hostname ---
+    // Evita el error de mismatch de IP/Hostname 
+    // Se agrega este parametro por que el certificado es para un hostname específico, pero la conexión se hace por IP. 
+    // Esto es seguro porque rejectUnauthorized ya verifica el certificado.
     checkServerIdentity: (hostname, cert) => {
       // Retornar undefined significa que nosotros aprobamos la identidad del servidor.
-      // Es seguro porque rejectUnauthorized=true ya verificó que el certificado es tuyo.
       return undefined;
     }
   }

@@ -6,6 +6,7 @@ const path = require('path');
 const logDir = path.join(__dirname, '../../logs');
 if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
 
+// Formato de logs personalizado para el logger de sistema
 const logFormat = format.combine(
   format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   format.printf(
@@ -13,7 +14,7 @@ const logFormat = format.combine(
   )
 );
 
-// 1. Logger de Sistema (Conexiones y Errores generales)
+//  Formato de logger del Sistema (Conexiones y Errores generales)
 const transportCombined = new DailyRotateFile({
   filename: path.join(logDir, 'sistema-%DATE%.log'),
   datePattern: 'YYYY-MM-DD',
@@ -22,6 +23,7 @@ const transportCombined = new DailyRotateFile({
   maxFiles: '14d'
 });
 
+// Logger principal del Sistema y su nivel de alertamiento
 const logger = createLogger({
   level: 'info',
   format: logFormat,
@@ -31,7 +33,7 @@ const logger = createLogger({
   ]
 });
 
-// 2. NUEVO: Logger Exclusivo de Auditoría (Formato JSON puro)
+// Logger exclusivo de auditoría (Formato JSON puro)
 const transportAudit = new DailyRotateFile({
   filename: path.join(logDir, 'auditoria-%DATE%.log'),
   datePattern: 'YYYY-MM-DD',
@@ -40,12 +42,15 @@ const transportAudit = new DailyRotateFile({
   maxFiles: '30d'
 });
 
+// Se crea el logger de auditoría con formato JSON puro para facilitar su análisis posterior,
+// se almacena en un archivo separado para mantener la claridad entre los logs de sistema y los de auditoría. 
+// Este logger se utilizará exclusivamente para registrar eventos de auditoría, como accesos, 
+// cambios críticos y otras acciones relevantes para la seguridad y el cumplimiento normativo.
 const auditLogger = createLogger({
   level: 'info',
   format: format.combine(
-    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-    //format.json()
-    format.printf((info) => JSON.stringify(info, null, 2))
+    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),  // Agrega una marca de tiempo a cada entrada de log
+    format.printf((info) => JSON.stringify(info, null, 2))  //formato json identado para facilitar su lectura y análisis posterior
   ),
   transports: [transportAudit]
 });
