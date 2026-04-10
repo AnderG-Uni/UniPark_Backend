@@ -1,0 +1,17 @@
+services:
+  unipark-backend:
+    build: .
+    container_name: unipark_api
+    restart: always
+    # Aquí pasamos el .env de forma segura al contenedor en runtime
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    networks:
+      - unipark_public
+
+networks:
+  # Red para tráfico externo
+  unipark_public:
+    driver: bridge
