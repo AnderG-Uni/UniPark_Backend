@@ -1,5 +1,6 @@
 const accesoService = require('../services/acceso.service');
 
+// Controlador para manejar el escaneo de QR, registro de visitantes y consulta de historial
 const escanearQR = async (req, res, next) => {
   try {
     const { qr_token, zona_id, observacion } = req.body;
@@ -25,6 +26,7 @@ const escanearQR = async (req, res, next) => {
   }
 };
 
+// Controlador para registrar un visitante manualmente por parte del Guarda
 const registrarVisitante = async (req, res, next) => {
   try {
     const { placa, zona_id, observacion } = req.body;
@@ -42,6 +44,7 @@ const registrarVisitante = async (req, res, next) => {
   }
 };
 
+// Controlador para que un usuario pueda consultar su propio historial de accesos
 const miHistorial = async (req, res, next) => {
   try {
     // IDOR seguro: Extraemos el persona_id del token directamente

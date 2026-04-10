@@ -1,6 +1,7 @@
 const usuarioService = require('../services/usuario.service');
 const ApiResponse = require('../utils/ApiResponse');
 
+// Controlador para crear los usuarios
 const crear = async (req, res, next) => {
   try {
     const usuario = await usuarioService.crearUsuario(req.body);
@@ -10,6 +11,7 @@ const crear = async (req, res, next) => {
   }
 };
 
+// Controlador para listar los usuarios
 const listar = async (req, res, next) => {
   try {
     const usuarios = await usuarioService.obtenerUsuarios();
@@ -19,6 +21,7 @@ const listar = async (req, res, next) => {
   }
 };
 
+// Controlador para eliminar un usuario
 const eliminar = async (req, res, next) => {
   try {
     await usuarioService.eliminarUsuario(req.params.id);

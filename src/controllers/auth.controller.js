@@ -1,6 +1,8 @@
 const authService = require('../services/auth.service');
 const ApiResponse = require('../utils/ApiResponse');
 
+
+// Controlador para manejar el login, renovación de token
 const login = async (req, res, next) => {
   try {
     const { correo, clave } = req.body;
@@ -20,6 +22,7 @@ const login = async (req, res, next) => {
   }
 };
 
+// Controlador para renovar el Access Token usando el Refresh Token
 const refresh = async (req, res, next) => {
   try {
     const { refreshToken } = req.cookies; // Lo lee automáticamente gracias a cookie-parser
@@ -31,6 +34,7 @@ const refresh = async (req, res, next) => {
   }
 };
 
+// Controlador para cerrar sesión (Logout)
 const logout = async (req, res, next) => {
   try {
     res.clearCookie('refreshToken'); // Destruye la sesión

@@ -1,6 +1,7 @@
 const vehiculoService = require('../services/vehiculo.service');
 const ApiError = require('../utils/ApiError');
 
+// Controlador para crear un nuevo vehículo asociado al usuario autenticado
 const crear = async (req, res, next) => {
   try {
     const personaId = req.usuario.persona_id; // Viene del JWT
@@ -11,7 +12,7 @@ const crear = async (req, res, next) => {
   }
 };
 
-// Endpoint Dinámico Seguro para servir la imagen QR
+// Controlador Dinámico Seguro para servir la imagen QR
 const servirImagenQR = async (req, res, next) => {
   try {
     const { qrTokenTokenExtendido } = req.params;
@@ -32,7 +33,7 @@ const servirImagenQR = async (req, res, next) => {
   }
 };
 
-// Mantén listarMios y actualizar igual
+// Controlador para listar los vehículos del usuario autenticado
 const listarMios = async (req, res, next) => {
   try {
     const vehiculos = await vehiculoService.listarMisVehiculos(req.usuario.persona_id);
@@ -42,6 +43,7 @@ const listarMios = async (req, res, next) => {
   }
 };
 
+// Controlador para actualizar un vehículo (solo si pertenece al usuario autenticado)
 const actualizar = async (req, res, next) => {
   try {
     const vehiculo = await vehiculoService.actualizar(req.params.id, req.body);
@@ -51,6 +53,7 @@ const actualizar = async (req, res, next) => {
   }
 };
 
+// Controlador para listar todos los vehículos (solo para administradores)
 const listarTodos = async (req, res, next) => {
   try {
     const vehiculos = await vehiculoService.listarTodos();
@@ -60,6 +63,7 @@ const listarTodos = async (req, res, next) => {
   }
 };
 
+// Controlador para obtener un vehículo por su ID (solo si pertenece al usuario autenticado o es admin)
 const obtenerUno = async (req, res, next) => {
   try {
     const vehiculo = await vehiculoService.obtenerPorId(req.params.id);
@@ -69,6 +73,7 @@ const obtenerUno = async (req, res, next) => {
   }
 };
 
+// Controlador para eliminar un vehículo (solo si pertenece al usuario autenticado o es admin)
 const eliminar = async (req, res, next) => {
   try {
     await vehiculoService.eliminar(req.params.id);
@@ -78,6 +83,7 @@ const eliminar = async (req, res, next) => {
   }
 };
 
+// Controlador para subir la foto de un vehículo (solo si pertenece al usuario autenticado)
 const subirFoto = async (req, res, next) => {
   try {
     // Multer inyecta el archivo procesado en 'req.file'

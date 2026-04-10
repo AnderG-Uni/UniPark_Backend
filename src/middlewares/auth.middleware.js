@@ -16,6 +16,11 @@ const verificarToken = (req, res, next) => {
     req.usuario = decodificado; // Guardamos los datos del usuario en la request
     next();
   } catch (error) {
+    console.error({
+      message: 'Error al verificar token de autenticación',
+      error: error.message,
+      stack: error.stack
+    });
     return next(new ApiError(401, 'Token inválido o expirado.'));
   }
 };
@@ -58,6 +63,11 @@ const verificarCreacionRolesInternos = (req, res, next) => {
     // Si es un Administrador legítimo, lo dejamos crear al nuevo Guarda/Directivo/Admin
     next();
   } catch (error) {
+    console.error({
+      message: 'Error al verificar token para creación de roles internos',
+      error: error.message,
+      stack: error.stack
+    });
     return next(new ApiError(401, 'Token inválido o expirado.'));
   }
 };
