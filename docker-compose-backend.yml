@@ -8,10 +8,8 @@ services:
       - .env
     ports:
       - "8080:8080"
-    networks:
-      - unipark_public
-
-networks:
-  # Red para tráfico externo
-  unipark_public:
-    driver: bridge
+    volumes:
+      # Formato: /ruta/en/tu/servidor:/app/certs:ro
+      - ./certs:/app/certs:ro
+      - ./logs:/app/logs
+        # restart: always

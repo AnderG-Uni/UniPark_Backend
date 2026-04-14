@@ -1,39 +1,54 @@
-# --- Stage 1: Base de construcción ---
-FROM node:20-alpine AS builder
+# --- Stage 1: Constructor ---
+FROM node:20-slim AS builder
 
-# Crear directorio de trabajo
+# Instalar dependencias de compilación para Debian
+# build-essential incluye gcc, g++, make y python3
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libjpeg-dev \
+    libgif-dev \
+    librsvg2-dev \
+    python3 \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copiar archivos de dependencias
 COPY package*.json ./
 
-# Instalar TODAS las dependencias 
-RUN npm ci --only=production
-
-# Copiar el resto del código
-COPY . .
-
+# Instalar TODAS las dependencias
+RUN npm ci --omit=dev
 
 # --- Stage 2: Runtime de Producción ---
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 
-# Definir entorno de producción
+# Instalamos SOLO las librerías necesarias para ejecutar, no para compilar
+# Incluimos dumb-init para seguridad de procesos
+RUN apt-get update && apt-get install -y \
+    libcairo2 \
+    libpango-1.0-0 \
+    libjpeg62-turbo \
+    libgif7 \
+    librsvg2-2 \
+    dumb-init \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV NODE_ENV=production
-
 WORKDIR /app
-
-# Instalar solo dependencias de producción y herramientas de seguridad
-# 'dumb-init' ayuda a manejar correctamente los procesos (señales SIGTERM, etc.)
-RUN apk add --no-cache dumb-init
 
 # Copiar solo lo necesario desde el builder
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 
+#RUN mkdir -p /app/logs /app/certs && chown -R node:node /app
+
+COPY server.js ./
 COPY src/ ./src/
 
 # Crear un usuario específico para no ejecutar como root
-USER nodeunipark
+USER node
 
 # Exponer el puerto de la app
 EXPOSE 8080
