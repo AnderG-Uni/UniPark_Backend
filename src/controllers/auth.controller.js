@@ -1,7 +1,6 @@
 const authService = require('../services/auth.service');
 const ApiResponse = require('../utils/ApiResponse');
 
-
 // Controlador para manejar el login, renovación de token
 const login = async (req, res, next) => {
   try {

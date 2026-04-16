@@ -42,10 +42,15 @@ WORKDIR /app
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 
-#RUN mkdir -p /app/logs /app/certs && chown -R node:node /app
+# Se crean las rutas y se dan permisos
+RUN mkdir -p /app/logs /app/certs /app/src/assets/vehiculos && chown -R node:node /app
 
+# Se copia los arcivos
 COPY server.js ./
 COPY src/ ./src/
+
+# Asegura que incluso los archivos copiados pertenezcan a node
+RUN chown -R node:node /app
 
 # Crear un usuario específico para no ejecutar como root
 USER node
