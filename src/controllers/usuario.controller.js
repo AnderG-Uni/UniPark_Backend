@@ -21,6 +21,21 @@ const listar = async (req, res, next) => {
   }
 };
 
+// Controlador para actualizar datos del usuario (Email, Rol, Clave)
+const actualizar = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    // Llamamos al servicio con el ID y todo el cuerpo de la petición (correo, rol, clave)
+    const usuarioActualizado = await usuarioService.actualizarUsuario(id, req.body);
+    
+    res.status(200).json(
+      new ApiResponse(200, usuarioActualizado, 'Datos de usuario actualizados correctamente')
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Controlador para eliminar un usuario
 const eliminar = async (req, res, next) => {
   try {
@@ -31,4 +46,5 @@ const eliminar = async (req, res, next) => {
   }
 };
 
-module.exports = { crear, listar, eliminar };
+// No olvides añadir 'actualizar' al export
+module.exports = { crear, listar, actualizar, eliminar };

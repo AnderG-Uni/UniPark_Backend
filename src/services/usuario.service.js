@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const ApiError = require('../utils/ApiError');
 
 class UsuarioService {
+  
   async crearUsuario(datos) {
     const { persona_id, correo, clave, rol } = datos;
 
@@ -17,16 +18,51 @@ class UsuarioService {
     const query = `
       INSERT INTO usuarios (persona_id, correo, clave, rol) 
       VALUES ($1, $2, $3, $4) 
-      RETURNING id, correo, rol, ultimo_login;
+      RETURNING id, persona_id, correo, rol, ultimo_login;
     `;
     const { rows } = await pool.query(query, [persona_id, correo, claveHasheada, rol]);
     return rows[0];
   }
 
   async obtenerUsuarios() {
-    const query = 'SELECT id, correo, rol, ultimo_login FROM usuarios';
+    // 🔥 AQUÍ ESTÁ LA MAGIA: Añadimos 'persona_id' al SELECT
+    const query = 'SELECT id, persona_id, correo, rol, ultimo_login FROM usuarios';
     const { rows } = await pool.query(query);
     return rows;
+  }
+
+  async actualizarUsuario(id, datos) {
+    const { correo, rol, clave } = datos;
+    let query = '';
+    let params = [];
+
+    // Si el administrador envió una nueva clave, hay que encriptarla
+    if (clave && clave.trim() !== "") {
+      const salt = await bcrypt.genSalt(10);
+      const claveHasheada = await bcrypt.hash(clave, salt);
+      
+      query = `
+        UPDATE usuarios 
+        SET correo = $1, rol = $2, clave = $3 
+        WHERE id = $4 
+        RETURNING id, correo, rol
+      `;
+      params = [correo, rol, claveHasheada, id];
+    } else {
+      // Si no envió clave, solo actualizamos correo y rol
+      query = `
+        UPDATE usuarios 
+        SET correo = $1, rol = $2 
+        WHERE id = $3 
+        RETURNING id, correo, rol
+      `;
+      params = [correo, rol, id];
+    }
+
+    const { rows } = await pool.query(query, params);
+    if (rows.length === 0) throw new ApiError(404, 'Usuario no encontrado');
+    
+    return rows[0];
   }
 
   async eliminarUsuario(id) {
@@ -36,4 +72,5 @@ class UsuarioService {
     return true;
   }
 }
+
 module.exports = new UsuarioService();

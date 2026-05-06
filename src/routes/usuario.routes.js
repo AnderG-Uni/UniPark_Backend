@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { crear, listar, eliminar } = require('../controllers/usuario.controller');
+const { crear, listar, actualizar, eliminar } = require('../controllers/usuario.controller');
 const {
   verificarToken,
   verificarCreacionRolesInternos
@@ -20,6 +20,7 @@ router.use(verificarToken);
 
 // 3. RUTAS PROTEGIDAS CON PBAC
 router.get('/', requierePermiso(PERMISOS.GESTIONAR_USUARIOS), listar);
+router.put('/:id', requierePermiso(PERMISOS.GESTIONAR_USUARIOS), actualizar);
 router.delete('/:id', requierePermiso(PERMISOS.GESTIONAR_USUARIOS), eliminar);
 
 module.exports = router;

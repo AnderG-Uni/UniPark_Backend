@@ -10,6 +10,7 @@ const nodeCanvas = require('canvas');
 const path = require('path');
 
 class VehiculoService {
+
   async crear(personaId, datos) {
     // 1. Validar límite de 2 vehículos
     const { rows: conteo } = await pool.query(
@@ -91,13 +92,14 @@ class VehiculoService {
     return buffer;
   }
 
-  // ... (manten listarMisVehiculos y actualizar igual que antes) ...
+  // (manten listarMisVehiculos y actualizar igual que antes) ...
   async listarMisVehiculos(personaId) {
     const { rows } = await pool.query('SELECT * FROM vehiculos WHERE persona_id = $1', [personaId]);
     // Construimos la URL dinámica al listar
     return rows.map((v) => ({ ...v, url_qr: `/api/v1/vehiculos/qr/${v.qr_token}.png` }));
   }
 
+  // 
   async actualizar(id, datos) {
     const query = `
       UPDATE vehiculos 
@@ -116,7 +118,7 @@ class VehiculoService {
     ];
     const { rows } = await pool.query(query, valores);
 
-    // --- MAGIA APLICADA: Construimos la URL dinámica antes de responder ---
+    //--- MAGIA APLICADA: Construimos la URL dinámica antes de responder ---
     const vehiculoActualizado = rows[0];
     vehiculoActualizado.url_qr = `/api/v1/vehiculos/qr/${vehiculoActualizado.qr_token}.png`;
 
@@ -138,7 +140,20 @@ class VehiculoService {
 
   // 2. Para el Dueño o Admin: Ver el detalle de un solo vehículo
   async obtenerPorId(id) {
-    const { rows } = await pool.query('SELECT * FROM vehiculos WHERE id = $1', [id]);
+    
+    const query = `
+      SELECT 
+        v.*, 
+        p.nombres_completos AS propietario_nombre,
+        p.numero_documento AS propietario_documento,
+        p.codigo_universitario
+      FROM vehiculos v
+      JOIN personas p ON v.persona_id = p.id
+      WHERE v.id = $1
+    `;
+    
+    const { rows } = await pool.query(query, [id]);
+    
     if (rows.length === 0) throw new ApiError(404, 'Vehículo no encontrado');
 
     const vehiculo = rows[0];
@@ -182,6 +197,7 @@ class VehiculoService {
 
     return vehiculoActualizado;
   }
+
 }
 
 module.exports = new VehiculoService();

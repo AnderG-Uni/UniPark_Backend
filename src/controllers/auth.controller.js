@@ -43,4 +43,24 @@ const logout = async (req, res, next) => {
   }
 };
 
-module.exports = { login, refresh, logout };
+const registro = async (req, res, next) => {
+  try {
+    const nuevoUsuario = await authService.registroEstudiante(req.body);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Cuenta creada exitosamente. Ya puedes iniciar sesión.',
+      data: nuevoUsuario
+    });
+  } catch (error) {
+    const statusCode = error.statusCode || 500;
+    
+    // Forzamos la respuesta estandarizada en JSON
+    res.status(statusCode).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+module.exports = { login, refresh, logout, registro };

@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const ApiError = require('../utils/ApiError');
 
 class AuthService {
+
   async login(correo, clavePlana) {
     const query = 'SELECT id, persona_id, correo, clave, rol FROM usuarios WHERE correo = $1';
     const { rows } = await pool.query(query, [correo]);
@@ -13,6 +14,11 @@ class AuthService {
 
     const claveValida = await bcrypt.compare(clavePlana, usuario.clave);
     if (!claveValida) throw new ApiError(401, 'Credenciales incorrectas');
+
+    await pool.query(
+      'UPDATE usuarios SET ultimo_login = CURRENT_TIMESTAMP WHERE id = $1', 
+      [usuario.id]
+    );
 
     // 2. A Metemos los datos dentro del payload del Token
     const accessToken = jwt.sign(
@@ -57,5 +63,67 @@ class AuthService {
       throw new ApiError(403, 'Refresh: Token inválido o expirado');
     }
   }
+
+  async registroEstudiante(datos) {
+    
+    // 0. Validar si el correo ya existe ANTES de procesar lo demás
+    const existe = await pool.query('SELECT id FROM usuarios WHERE correo = $1', [datos.correo]);
+    if (existe.rows.length > 0) {
+      throw new ApiError(400, 'El correo ya está registrado en el sistema.');
+    }
+
+    // 1. Encriptar la contraseña antes de abrir la transacción
+    const salt = await bcrypt.genSalt(10);
+    const claveHasheada = await bcrypt.hash(datos.clave, salt);
+
+    // 2. Solicitar un cliente dedicado para la transacción
+    const client = await pool.connect();
+
+    try {
+      await client.query('BEGIN'); // INICIA LA TRANSACCIÓN ACID
+
+      // PASO A: Insertar la Persona y recuperar su ID
+      const queryPersona = `
+        INSERT INTO personas (
+          nombres_completos, tipo_documento, numero_documento, 
+          telefono, codigo_universitario, carrera_dependencia
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id
+      `;
+      const valoresPersona = [
+        datos.nombres_completos, datos.tipo_documento, datos.numero_documento,
+        datos.telefono, datos.codigo_universitario, datos.carrera_dependencia
+      ];
+      
+      const resPersona = await client.query(queryPersona, valoresPersona);
+      const nuevaPersonaId = resPersona.rows[0].id;
+
+      // PASO B: Insertar el Usuario forzando el rol a 'Estudiante'
+      const queryUsuario = `
+        INSERT INTO usuarios (correo, clave, rol, persona_id)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id, correo, rol
+      `;
+      const valoresUsuario = [datos.correo, claveHasheada, 'Estudiante', nuevaPersonaId];
+      
+      const resUsuario = await client.query(queryUsuario, valoresUsuario);
+
+      await client.query('COMMIT'); // GUARDA TODO SI NO HUBO ERRORES
+
+      return resUsuario.rows[0];
+
+    } catch (error) {
+      await client.query('ROLLBACK'); // DESHACE TODO SI ALGO FALLÓ
+      
+      // Validamos también si la base de datos se queja del número de documento duplicado
+      if (error.code === '23505') {
+        throw new ApiError(400, 'El documento de identidad o correo ya se encuentran registrados.');
+      }
+      throw error;
+    } finally {
+      client.release(); // Libera la conexión de vuelta al pool
+    }
+  }
+
 }
 module.exports = new AuthService();

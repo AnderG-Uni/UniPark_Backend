@@ -16,6 +16,7 @@ const PERMISOS = {
   ACTUALIZAR_VEHICULO: 'ACTUALIZAR_VEHICULO', // Actualizar solo los vehículos propios, no de otros usuarios
   GESTIONAR_VEHICULOS: 'GESTIONAR_VEHICULOS', // Exclusivo del Admin
   VER_IMAGEN_QR: 'VER_IMAGEN_QR', // para servir la imagen dinámica
+  GESTIONAR_HISTORIAL: 'GESTIONAR_HISTORIAL', // Ver el historial global de ingresos/salidas
 
   // Módulo Zonas
   VER_ZONAS: 'VER_ZONAS', // Todos pueden ver las zonas, pero solo algunos roles pueden gestionarlas
@@ -51,7 +52,8 @@ const ROLES_PERMISOS = {
     PERMISOS.VER_MIS_VEHICULOS,
     PERMISOS.VER_REPORTES,
     PERMISOS.VER_IMAGEN_QR,
-    PERMISOS.VER_ZONAS
+    PERMISOS.VER_ZONAS,
+    PERMISOS.GESTIONAR_HISTORIAL
   ],
   Administrativo: [
     PERMISOS.CREAR_VEHICULO,
@@ -60,7 +62,8 @@ const ROLES_PERMISOS = {
     PERMISOS.VER_IMAGEN_QR,
     PERMISOS.VER_ZONAS,
     PERMISOS.GESTIONAR_ZONAS,
-    PERMISOS.GESTIONAR_INFRAESTRUCTURA
+    PERMISOS.GESTIONAR_INFRAESTRUCTURA,
+    PERMISOS.GESTIONAR_HISTORIAL
   ],
   Directivo: [
     PERMISOS.CREAR_VEHICULO,

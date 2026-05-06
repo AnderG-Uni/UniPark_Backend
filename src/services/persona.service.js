@@ -2,6 +2,8 @@ const pool = require('../config/db');
 const ApiError = require('../utils/ApiError');
 
 class PersonaService {
+
+  
   async crearPersona(datos) {
     const {
       nombres_completos,

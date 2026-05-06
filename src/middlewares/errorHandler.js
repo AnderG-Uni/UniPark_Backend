@@ -5,7 +5,7 @@ const { logger } = require('../config/logger');
  * Middleware global para el manejo de errores.
  * Debe ser el último middleware en app.js
  */
-const errorHandler = (err, req, res) => {
+const errorHandler = (err, req, res, next) => {
   let error = err;
 
   // Si el error no es una instancia de nuestro ApiError, lo convertimos

@@ -16,6 +16,7 @@ const zonaRoutes = require('./routes/zona.routes');
 const accesoRoutes = require('./routes/acceso.routes');
 const infraestructuraRoutes = require('./routes/infraestructura.routes');
 const reportesRoutes = require('./routes/reportes.routes');
+const historialRoutes = require('./routes/historial.routes');
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use('/api/v1/zonas', zonaRoutes);
 app.use('/api/v1/acceso', accesoRoutes);
 app.use('/api/v1/admin', infraestructuraRoutes);
 app.use('/api/v1/reportes', reportesRoutes);
+app.use('/api/v1/historial', historialRoutes);
 
 // Middleware de Manejo de Errores (Debe ir al final, después de todas las rutas)
 app.use(errorHandler);
