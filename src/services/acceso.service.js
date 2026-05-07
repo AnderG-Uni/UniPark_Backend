@@ -2,19 +2,39 @@ const pool = require('../config/db');
 const ApiError = require('../utils/ApiError');
 
 class AccesoService {
-  // LÓGICA DE VISITANTES (ESCANEO CON PLACA)
+
+// LÓGICA DE ESCANEO QR (ESCANEO QR)
   async procesarEscaneoQR(qr_token, zona_id, guarda_id, observacion) {
     const cliente = await pool.connect();
 
     try {
       await cliente.query('BEGIN');
 
+      // 🪄 CORRECCIÓN 1: JOIN para traer datos del vehículo, la persona y su rol
       const { rows: vehiculos } = await cliente.query(
-        'SELECT id, tipo FROM vehiculos WHERE qr_token = $1',
+        `SELECT 
+           v.id, v.tipo, v.placa, v.marca,
+           p.nombres_completos, p.codigo_universitario,
+           u.rol
+         FROM vehiculos v
+         JOIN personas p ON v.persona_id = p.id
+         LEFT JOIN usuarios u ON u.persona_id = p.id
+         WHERE v.qr_token = $1`,
         [qr_token]
       );
+
       if (vehiculos.length === 0) throw new ApiError(404, 'Vehículo no encontrado o QR inválido.');
       const vehiculo = vehiculos[0];
+
+      // Construimos el objeto de datos que devolveremos al frontend
+      const datosRespuesta = {
+        vehiculo: { placa: vehiculo.placa, marca: vehiculo.marca, tipo: vehiculo.tipo },
+        propietario: { 
+          nombre: vehiculo.nombres_completos, 
+          rol: vehiculo.rol || 'Sin rol', 
+          codigo_universitario: vehiculo.codigo_universitario 
+        }
+      };
 
       const { rows: registrosActivos } = await cliente.query(
         'SELECT id, zona_id FROM registros_parqueo WHERE vehiculo_id = $1 AND fecha_salida IS NULL FOR UPDATE',
@@ -25,7 +45,6 @@ class AccesoService {
       if (registrosActivos.length > 0) {
         const registro = registrosActivos[0];
 
-        // Actualizamos la fecha_salida
         await cliente.query(
           'UPDATE registros_parqueo SET fecha_salida = CURRENT_TIMESTAMP WHERE id = $1',
           [registro.id]
@@ -36,7 +55,12 @@ class AccesoService {
         );
 
         await cliente.query('COMMIT');
-        return { accion: 'SALIDA', mensaje: 'Salida registrada exitosamente.' };
+        // 🪄 CORRECCIÓN 2: Devolvemos los datos adicionales
+        return { 
+          accion: 'SALIDA', 
+          mensaje: 'Salida registrada exitosamente.',
+          datos: datosRespuesta
+        };
       }
 
       // --- INGRESO ---
@@ -47,17 +71,13 @@ class AccesoService {
       if (zonas.length === 0) throw new ApiError(404, 'La zona de parqueo indicada no existe.');
       const zona = zonas[0];
 
-      if (zona.tipo_permitido !== vehiculo.tipo) {
-        throw new ApiError(
-          400,
-          `Esta zona es exclusiva para ${zona.tipo_permitido}s. Vehículo detectado: ${vehiculo.tipo}`
-        );
+      if (zona.tipo_permitido !== vehiculo.tipo && zona.tipo_permitido !== 'Mixto') {
+        throw new ApiError(400, `Esta zona es exclusiva para ${zona.tipo_permitido}s. Vehículo detectado: ${vehiculo.tipo}`);
       }
       if (zona.cupos_ocupados >= zona.capacidad_total) {
         throw new ApiError(400, 'Acceso Denegado: La zona de parqueo está llena.');
       }
 
-      // --- EL NUEVO INSERT CON TODOS LOS CAMPOS REQUERIDOS ---
       await cliente.query(
         `INSERT INTO registros_parqueo (vehiculo_id, zona_id, usuario_admin_id, fecha_entrada, observacion) 
          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4)`,
@@ -70,16 +90,21 @@ class AccesoService {
       );
 
       await cliente.query('COMMIT');
-      return { accion: 'INGRESO', mensaje: 'Ingreso autorizado.' };
+      // 🪄 CORRECCIÓN 3: Devolvemos los datos adicionales
+      return { 
+        accion: 'INGRESO', 
+        mensaje: 'Ingreso autorizado.',
+        datos: datosRespuesta
+      };
     } catch (error) {
       await cliente.query('ROLLBACK');
       throw error;
     } finally {
-      cliente.release(); // Siempre liberamos la conexión
+      cliente.release(); 
     }
   }
 
-  // LÓGICA DE VISITANTES (CON PLACA)
+  // LÓGICA DE VISITANTES (CON PLACA MANUAL)
   async procesarVisitante(placa, zona_id, guarda_id, observacion) {
     const cliente = await pool.connect();
 
@@ -170,6 +195,7 @@ class AccesoService {
     const { rows } = await pool.query(query, [persona_id]);
     return rows;
   }
+
 }
 
 module.exports = new AccesoService();
