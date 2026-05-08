@@ -11,4 +11,4 @@ services:
     volumes:
       - ./certs:/app/certs:ro
       - ./logs:/app/logs
-      - /opt/Unipark/UniPark_Backend/src/assets/vehiculos:/app/src/assets/vehiculos
+      - /opt/Unipark/UniPark_Backend/src/assets:/app/src/assets
