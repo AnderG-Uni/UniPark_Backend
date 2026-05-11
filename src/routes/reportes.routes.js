@@ -6,15 +6,16 @@ const { PERMISOS } = require('../config/roles');
 
 const router = Router();
 
-// Todas las rutas de reportes están fuertemente protegidas
+// 1. Validamos que el usuario esté autenticado para TODAS las rutas
 router.use(verificarToken);
-router.use(requierePermiso(PERMISOS.VER_REPORTES));
 
-// Endpoints de Inteligencia de Negocios
-router.get('/horas-pico', reportesController.obtenerHorasPico);
-router.get('/distribucion', reportesController.obtenerDistribucion);
-router.get('/auditoria-guardas', reportesController.obtenerAuditoriaGuardas);
-router.get('/ocupacion', reportesController.obtenerOcupacionZonas);
-router.get('/pernoctas', reportesController.obtenerPernoctas);
+// 2. RUTA PÚBLICA (Para usuarios con el permiso básico de ver disponibilidad)
+router.get('/ocupacion', requierePermiso(PERMISOS.VER_REPORTE_OCUPACION), reportesController.obtenerOcupacionZonas);
+
+// 3. RUTAS ESTRICTAS (Solo para Administradores / Guardas / Directivos)
+router.get('/horas-pico', requierePermiso(PERMISOS.VER_REPORTES), reportesController.obtenerHorasPico);
+router.get('/distribucion', requierePermiso(PERMISOS.VER_REPORTES), reportesController.obtenerDistribucion);
+router.get('/auditoria-guardas', requierePermiso(PERMISOS.VER_REPORTES), reportesController.obtenerAuditoriaGuardas);
+router.get('/pernoctas', requierePermiso(PERMISOS.VER_REPORTES), reportesController.obtenerPernoctas);
 
 module.exports = router;

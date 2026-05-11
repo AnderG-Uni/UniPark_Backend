@@ -8,23 +8,26 @@ const { PERMISOS } = require('../config/roles');
 
 const router = Router();
 
-// Todas las rutas requieren estar autenticado y ser Administrador
+// 1. Solo verificamos que el usuario esté logueado globalmente
 router.use(verificarToken);
-router.use(requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA));
 
-// --- RUTAS DE INSTITUCIONES ---
-router.post('/instituciones', validarEsquema(institucionSchema), infraController.crearInstitucion);
-router.get('/instituciones', infraController.listarInstituciones);
+// --- RUTAS DE INSTITUCIONES (Siguen siendo exclusivas del Admin) ---
+router.post('/instituciones', requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA), validarEsquema(institucionSchema), infraController.crearInstitucion);
+router.get('/instituciones', requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA), infraController.listarInstituciones);
 router.put(
   '/instituciones/:id',
+  requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA),
   validarEsquema(institucionSchema),
   infraController.actualizarInstitucion
 );
 
 // --- RUTAS DE SEDES ---
-router.post('/sedes', validarEsquema(sedeSchema), infraController.crearSede);
-router.get('/sedes', infraController.listarSedes);
-router.put('/sedes/:id', validarEsquema(sedeSchema), infraController.actualizarSede);
-router.delete('/sedes/:id', infraController.eliminarSede);
+// 🪄 2. APLICAMOS EL NUEVO PERMISO: Ahora estudiantes/docentes pueden ver las sedes para el filtro
+router.get('/sedes', requierePermiso(PERMISOS.VER_SEDES), infraController.listarSedes);
+
+// 3. El resto de la gestión de sedes se protege solo para el Administrador
+router.post('/sedes', requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA), validarEsquema(sedeSchema), infraController.crearSede);
+router.put('/sedes/:id', requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA), validarEsquema(sedeSchema), infraController.actualizarSede);
+router.delete('/sedes/:id', requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA), infraController.eliminarSede);
 
 module.exports = router;

@@ -58,20 +58,25 @@ class ReportesService {
   }
 
   // 4. Ocupación de Zonas en Tiempo Real
-  async reporteOcupacionZonas() {
-    const query = `
-      SELECT 
-        z.nombre AS zona,
-        z.tipo_permitido,
-        z.capacidad_total,
-        z.cupos_ocupados,
-        ROUND((z.cupos_ocupados::numeric / z.capacidad_total::numeric) * 100, 2) AS porcentaje_ocupacion
-      FROM zonas_parqueo z
-      ORDER BY porcentaje_ocupacion DESC;
-    `;
-    const { rows } = await pool.query(query);
-    return rows;
-  }
+ async reporteOcupacionZonas() {
+  const query = `
+    SELECT 
+      z.id,
+      z.nombre AS zona,
+      z.tipo_permitido,
+      z.capacidad_total,
+      z.cupos_ocupados,
+      z.sede_id,
+      s.nombre AS sede_nombre,
+      ROUND((z.cupos_ocupados::numeric / z.capacidad_total::numeric) * 100, 2) AS porcentaje_ocupacion
+    FROM zonas_parqueo z
+    JOIN sedes s ON z.sede_id = s.id
+    ORDER BY porcentaje_ocupacion DESC;
+  `;
+  
+  const { rows } = await pool.query(query);
+  return rows;
+}
 
   // 5. Alerta de Pernoctas (Vehículos abandonados o que no registraron salida > 12 horas)
   async reportePernoctas() {

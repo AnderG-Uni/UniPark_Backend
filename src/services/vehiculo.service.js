@@ -55,41 +55,63 @@ class VehiculoService {
 
   // ---  Genera la imagen QR con estilo predefinido---
   async generarBufferImagenQR(qrToken) {
-    // 1. Verificar que el token exista en la BD.
-    const query = 'SELECT 1 FROM vehiculos WHERE qr_token = $1';
+    // 1. Verificar que el token exista y traer la PLACA
+    // 🪄 Cambiamos "SELECT 1" por "SELECT placa"
+    const query = 'SELECT placa FROM vehiculos WHERE qr_token = $1';
     const { rows } = await pool.query(query, [qrToken]);
     if (rows.length === 0) throw new ApiError(404, 'Token QR inválido.');
+    
+    const placa = rows[0].placa; // 🪄 Guardamos la placa
 
-    // 2. Configuración de diseño definido
+    // 2. Configuración de diseño del QR
     const logoPath = path.join(__dirname, '../assets/logo_unipark.png');
 
     const qrApi = new QRCodeStyling({
-      nodeCanvas: nodeCanvas, // Pasamos el motor de canvas de Node
+      nodeCanvas: nodeCanvas, 
       width: 400,
       height: 400,
-      data: qrToken, // El contenido es el UUID seguro
+      data: qrToken, 
       margin: 5,
-
-      // ESTILO DEL CUERPO (Gris oscuro)
-      dotsOptions: { color: '#4A4A4A', type: 'extra-rounded' },
-
-      // ESTILO DE LOS MARCADORES "OJO" (Bordes dorados)
+      dotsOptions: { color: '#000000', type: 'square' }, // Optimizado (Negro/Cuadrado)
       backgroundOptions: { color: '#ffffff' },
       imageOptions: { hideBackgroundDots: true, imageSize: 0.4, margin: 5 },
-
-      // El Logo centrado
       image: logoPath,
-
-      // ESTILO DE LAS ESQUINAS/OJOS
-      cornersSquareOptions: { color: '#E4AB10', type: 'extra-rounded' },
-      cornersDotOptions: { color: '#E4AB10', type: 'dot' } // El punto central del ojo
+      cornersSquareOptions: { color: '#E4AB10', type: 'square' }, 
+      cornersDotOptions: { color: '#E4AB10', type: 'square' } 
     });
 
-    // 3. Generar la imagen como un Buffer (datos binarios en RAM)
-    // El Node adapter de qr-code-styling usa getRawData para devolver Buffer
-    const buffer = await qrApi.getRawData('png');
+    // 3. Generar el QR base como Buffer
+    const qrBuffer = await qrApi.getRawData('png');
 
-    return buffer;
+    // =========================================================
+    // 🪄 4. MAGIA CON CANVAS: Juntar el QR y el texto (CORREGIDO)
+    // =========================================================
+    
+    // Configuramos un lienzo más alto usando TU variable 'nodeCanvas'
+    const canvasWidth = 400;
+    const canvasHeight = 460;
+    const canvas = nodeCanvas.createCanvas(canvasWidth, canvasHeight);
+    const ctx = canvas.getContext('2d');
+
+    // A) Pintar todo el fondo de blanco
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    // B) Cargar la imagen del QR y pegarla arriba usando TU variable 'nodeCanvas'
+    const qrImage = await nodeCanvas.loadImage(qrBuffer);
+    ctx.drawImage(qrImage, 0, 0, 400, 400);
+
+    // C) Escribir la Placa en el espacio en blanco de abajo
+    ctx.fillStyle = '#000000'; // Color del texto (Negro)
+    ctx.font = 'bold 36px sans-serif'; // Tamaño y tipo de fuente
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Posicionamos el texto justo en el centro del ancho y en el espacio inferior
+    ctx.fillText(`PLACA: ${placa.toUpperCase()}`, canvasWidth / 2, 430);
+
+    // 5. Convertir nuestro nuevo lienzo a un Buffer y retornarlo
+    return canvas.toBuffer('image/png');
   }
 
   // (manten listarMisVehiculos y actualizar igual que antes) ...

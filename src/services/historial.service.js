@@ -6,19 +6,40 @@ class HistorialService {
   // 1. Obtiene TODOS los registros (Para Admin y Guarda)
   async obtenerHistorialGlobal() {
     try {
+      // 🪄 Hacemos JOIN con zonas, sedes y la persona/usuario (Guarda)
       const query = `
-        SELECT r.id, v.placa as vehiculo, 
-               CASE WHEN r.zona_id = 1 THEN 'Melendez' ELSE 'Norte' END as sede, 
-               r.fecha_entrada as fecha_ingreso, r.fecha_salida, 'Registrado' as tipo
+        SELECT 
+            r.id, 
+            v.placa as vehiculo, 
+            s.nombre as sede, 
+            z.nombre as zona,
+            p_guarda.nombres_completos as guarda,
+            r.fecha_entrada as fecha_ingreso, 
+            r.fecha_salida, 
+            'Usuario' as tipo
         FROM registros_parqueo r
         JOIN vehiculos v ON r.vehiculo_id = v.id
+        JOIN zonas_parqueo z ON r.zona_id = z.id
+        JOIN sedes s ON z.sede_id = s.id
+        LEFT JOIN usuarios u_guarda ON r.usuario_admin_id = u_guarda.id
+        LEFT JOIN personas p_guarda ON u_guarda.persona_id = p_guarda.id
         
         UNION ALL
         
-        SELECT vp.id, vp.placa as vehiculo, 
-               CASE WHEN vp.zona_id = 1 THEN 'Melendez' ELSE 'Norte' END as sede, 
-               vp.fecha_entrada as fecha_ingreso, vp.fecha_salida, 'Visitante' as tipo
+        SELECT 
+            vp.id, 
+            vp.placa as vehiculo, 
+            s.nombre as sede, 
+            z.nombre as zona,
+            p_guarda.nombres_completos as guarda,
+            vp.fecha_entrada as fecha_ingreso, 
+            vp.fecha_salida, 
+            'Visitante' as tipo
         FROM visitantes_parqueo vp
+        JOIN zonas_parqueo z ON vp.zona_id = z.id
+        JOIN sedes s ON z.sede_id = s.id
+        LEFT JOIN usuarios u_guarda ON vp.usuario_admin_id = u_guarda.id
+        LEFT JOIN personas p_guarda ON u_guarda.persona_id = p_guarda.id
         
         ORDER BY fecha_ingreso DESC
       `;
@@ -26,9 +47,7 @@ class HistorialService {
       return rows;
       
     } catch (error) {
-      // Dejamos rastro en consola para debug interno
       console.error(' Error BD en obtenerHistorialGlobal:', error.message);
-      // Lanzamos un error controlado hacia el controlador
       throw new ApiError(500, 'Error interno al intentar obtener el historial global de parqueaderos.');
     }
   }
@@ -41,12 +60,23 @@ class HistorialService {
     }
 
     try {
+      // 🪄 Agregamos los JOINs para Sede, Zona y Guarda
       const query = `
-        SELECT r.id, v.placa as vehiculo, 
-               CASE WHEN r.zona_id = 1 THEN 'Melendez' ELSE 'Norte' END as sede, 
-               r.fecha_entrada as fecha_ingreso, r.fecha_salida, 'Registrado' as tipo
+        SELECT 
+            r.id, 
+            v.placa as vehiculo, 
+            s.nombre as sede, 
+            z.nombre as zona,
+            p_guarda.nombres_completos as guarda,
+            r.fecha_entrada as fecha_ingreso, 
+            r.fecha_salida, 
+            'Usuario' as tipo
         FROM registros_parqueo r
         JOIN vehiculos v ON r.vehiculo_id = v.id
+        JOIN zonas_parqueo z ON r.zona_id = z.id
+        JOIN sedes s ON z.sede_id = s.id
+        LEFT JOIN usuarios u_guarda ON r.usuario_admin_id = u_guarda.id
+        LEFT JOIN personas p_guarda ON u_guarda.persona_id = p_guarda.id
         WHERE v.persona_id = $1
         ORDER BY fecha_ingreso DESC
       `;

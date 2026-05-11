@@ -4,13 +4,14 @@ const ApiError = require('../utils/ApiError');
 class AccesoService {
 
 // LÓGICA DE ESCANEO QR (ESCANEO QR)
+// LÓGICA DE ESCANEO QR (ESCANEO QR)
   async procesarEscaneoQR(qr_token, zona_id, guarda_id, observacion) {
     const cliente = await pool.connect();
 
     try {
       await cliente.query('BEGIN');
 
-      // 🪄 CORRECCIÓN 1: JOIN para traer datos del vehículo, la persona y su rol
+      // 1. Obtener datos del vehículo y propietario
       const { rows: vehiculos } = await cliente.query(
         `SELECT 
            v.id, v.tipo, v.placa, v.marca,
@@ -26,7 +27,6 @@ class AccesoService {
       if (vehiculos.length === 0) throw new ApiError(404, 'Vehículo no encontrado o QR inválido.');
       const vehiculo = vehiculos[0];
 
-      // Construimos el objeto de datos que devolveremos al frontend
       const datosRespuesta = {
         vehiculo: { placa: vehiculo.placa, marca: vehiculo.marca, tipo: vehiculo.tipo },
         propietario: { 
@@ -36,34 +36,49 @@ class AccesoService {
         }
       };
 
+      // 🪄 2. VALIDACIÓN ESTRICTA DE DOBLE INGRESO
+      // Buscamos si el vehículo ya está dentro de ALGUNA zona en cualquier sede
       const { rows: registrosActivos } = await cliente.query(
-        'SELECT id, zona_id FROM registros_parqueo WHERE vehiculo_id = $1 AND fecha_salida IS NULL FOR UPDATE',
+        `SELECT rp.id, rp.zona_id, z.nombre as zona_nombre, s.nombre as sede_nombre
+         FROM registros_parqueo rp
+         JOIN zonas_parqueo z ON rp.zona_id = z.id
+         LEFT JOIN sedes s ON z.sede_id = s.id
+         WHERE rp.vehiculo_id = $1 AND rp.fecha_salida IS NULL 
+         FOR UPDATE OF rp`,
         [vehiculo.id]
       );
 
-      // --- SALIDA ---
+      // --- ESCENARIO: EL VEHÍCULO YA ESTÁ ADENTRO ---
       if (registrosActivos.length > 0) {
         const registro = registrosActivos[0];
 
-        await cliente.query(
-          'UPDATE registros_parqueo SET fecha_salida = CURRENT_TIMESTAMP WHERE id = $1',
-          [registro.id]
-        );
-        await cliente.query(
-          'UPDATE zonas_parqueo SET cupos_ocupados = cupos_ocupados - 1 WHERE id = $1',
-          [registro.zona_id]
-        );
+        // ¿Lo están escaneando en la MISMA zona donde entró? -> Es una SALIDA válida.
+        if (registro.zona_id === parseInt(zona_id)) {
+          await cliente.query(
+            'UPDATE registros_parqueo SET fecha_salida = CURRENT_TIMESTAMP WHERE id = $1',
+            [registro.id]
+          );
+          await cliente.query(
+            'UPDATE zonas_parqueo SET cupos_ocupados = cupos_ocupados - 1 WHERE id = $1',
+            [registro.zona_id]
+          );
 
-        await cliente.query('COMMIT');
-        // 🪄 CORRECCIÓN 2: Devolvemos los datos adicionales
-        return { 
-          accion: 'SALIDA', 
-          mensaje: 'Salida registrada exitosamente.',
-          datos: datosRespuesta
-        };
+          await cliente.query('COMMIT');
+          return { 
+            accion: 'SALIDA', 
+            mensaje: 'Salida registrada exitosamente.',
+            datos: datosRespuesta
+          };
+        } else {
+          //  ¿Lo están escaneando en una zona DIFERENTE? -> BLOQUEO. No ha salido de la anterior.
+          throw new ApiError(
+            400, 
+            `Acceso Denegado: El vehículo registra un ingreso previo sin salida en [${registro.sede_nombre} - ${registro.zona_nombre}]. Debe salir de esa zona primero.`
+          );
+        }
       }
 
-      // --- INGRESO ---
+      // --- ESCENARIO: EL VEHÍCULO ESTÁ AFUERA (INGRESO NUEVO) ---
       const { rows: zonas } = await cliente.query(
         'SELECT capacidad_total, cupos_ocupados, tipo_permitido FROM zonas_parqueo WHERE id = $1 FOR UPDATE',
         [zona_id]
@@ -71,13 +86,16 @@ class AccesoService {
       if (zonas.length === 0) throw new ApiError(404, 'La zona de parqueo indicada no existe.');
       const zona = zonas[0];
 
+      // Validar Tipo
       if (zona.tipo_permitido !== vehiculo.tipo && zona.tipo_permitido !== 'Mixto') {
         throw new ApiError(400, `Esta zona es exclusiva para ${zona.tipo_permitido}s. Vehículo detectado: ${vehiculo.tipo}`);
       }
+      // Validar Cupos
       if (zona.cupos_ocupados >= zona.capacidad_total) {
         throw new ApiError(400, 'Acceso Denegado: La zona de parqueo está llena.');
       }
 
+      // 🪄 REGISTRO CON EL ID DEL GUARDA (usuario_admin_id)
       await cliente.query(
         `INSERT INTO registros_parqueo (vehiculo_id, zona_id, usuario_admin_id, fecha_entrada, observacion) 
          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4)`,
@@ -90,7 +108,6 @@ class AccesoService {
       );
 
       await cliente.query('COMMIT');
-      // 🪄 CORRECCIÓN 3: Devolvemos los datos adicionales
       return { 
         accion: 'INGRESO', 
         mensaje: 'Ingreso autorizado.',

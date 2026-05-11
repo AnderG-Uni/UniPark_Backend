@@ -41,14 +41,22 @@ class AuthService {
     try {
       const decodificado = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
 
-      // Opcional: Verificar si el usuario aún existe en la BD
-      const { rows } = await pool.query('SELECT id, rol FROM usuarios WHERE id = $1', [
+      // Buscamos al usuario incluyendo el persona_id para mantener la consistencia
+      const { rows } = await pool.query('SELECT id, persona_id, rol FROM usuarios WHERE id = $1', [
         decodificado.id
       ]);
+      
       if (rows.length === 0) throw new ApiError(401, 'El usuario ya no existe');
 
+      const usuario = rows[0];
+
+      // Generamos el nuevo token con el payload
       const nuevoAccessToken = jwt.sign(
-        { id: rows[0].id, rol: rows[0].rol },
+        { 
+          id: usuario.id, 
+          persona_id: usuario.persona_id, 
+          rol: usuario.rol 
+        },
         process.env.JWT_ACCESS_SECRET,
         { expiresIn: process.env.JWT_ACCESS_EXPIRATION }
       );
