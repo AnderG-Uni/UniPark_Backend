@@ -14,8 +14,15 @@ const crear = async (req, res, next) => {
 // Controlador para listar los usuarios
 const listar = async (req, res, next) => {
   try {
-    const usuarios = await usuarioService.obtenerUsuarios();
-    res.status(200).json(new ApiResponse(200, usuarios, 'Lista de usuarios'));
+    // 1. Extraer los parámetros de la URL con valores por defecto
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    // 2. Llamar al servicio pasando la paginación
+    const resultado = await usuarioService.obtenerUsuarios(page, limit);
+    
+    // 3. Responder con la estructura paginada { data, meta }
+    res.status(200).json(new ApiResponse(200, resultado, 'Lista de usuarios paginada'));
   } catch (error) {
     next(error);
   }
@@ -27,10 +34,12 @@ const actualizar = async (req, res, next) => {
     const { id } = req.params;
     // Llamamos al servicio con el ID y todo el cuerpo de la petición (correo, rol, clave)
     const usuarioActualizado = await usuarioService.actualizarUsuario(id, req.body);
-    
-    res.status(200).json(
-      new ApiResponse(200, usuarioActualizado, 'Datos de usuario actualizados correctamente')
-    );
+
+    res
+      .status(200)
+      .json(
+        new ApiResponse(200, usuarioActualizado, 'Datos de usuario actualizados correctamente')
+      );
   } catch (error) {
     next(error);
   }

@@ -58,8 +58,8 @@ class ReportesService {
   }
 
   // 4. Ocupación de Zonas en Tiempo Real
- async reporteOcupacionZonas() {
-  const query = `
+  async reporteOcupacionZonas() {
+    const query = `
     SELECT 
       z.id,
       z.nombre AS zona,
@@ -73,32 +73,53 @@ class ReportesService {
     JOIN sedes s ON z.sede_id = s.id
     ORDER BY porcentaje_ocupacion DESC;
   `;
-  
-  const { rows } = await pool.query(query);
-  return rows;
-}
 
-  // 5. Alerta de Pernoctas (Vehículos abandonados o que no registraron salida > 12 horas)
-  async reportePernoctas() {
-    const query = `
-      SELECT 
-        'Oficial' AS tipo, v.placa, r.fecha_entrada, 
-        EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - r.fecha_entrada))/3600 AS horas_adentro
-      FROM registros_parqueo r
-      JOIN vehiculos v ON r.vehiculo_id = v.id
-      WHERE r.fecha_salida IS NULL AND r.fecha_entrada < NOW() - INTERVAL '12 hours'
-      
-      UNION ALL
-      
-      SELECT 
-        'Visitante' AS tipo, placa, fecha_entrada,
-        EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - fecha_entrada))/3600 AS horas_adentro
-      FROM visitantes_parqueo
-      WHERE fecha_salida IS NULL AND fecha_entrada < NOW() - INTERVAL '12 hours'
-      ORDER BY horas_adentro DESC;
-    `;
     const { rows } = await pool.query(query);
     return rows;
+  }
+
+// 5. Alerta de Pernoctas (Vehículos abandonados o que no registraron salida > 12 horas)
+  async reportePernoctas() {
+    try {
+      const query = `
+        SELECT 
+          'Oficial' AS tipo, 
+          v.id AS vehiculo_id, 
+          v.placa, 
+          v.url_foto, 
+          s.nombre AS sede,
+          z.nombre AS parqueadero,
+          r.fecha_entrada, 
+          EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - r.fecha_entrada))/3600 AS horas_adentro
+        FROM registros_parqueo r
+        JOIN vehiculos v ON r.vehiculo_id = v.id
+        LEFT JOIN zonas_parqueo z ON r.zona_id = z.id
+        LEFT JOIN sedes s ON z.sede_id = s.id
+        WHERE r.fecha_salida IS NULL AND r.fecha_entrada < NOW() - INTERVAL '12 hours'
+        
+        UNION ALL
+        
+        SELECT 
+          'Visitante' AS tipo, 
+          NULL AS vehiculo_id, 
+          vp.placa, 
+          NULL AS url_foto, 
+          s.nombre AS sede,
+          z.nombre AS parqueadero,
+          vp.fecha_entrada,
+          EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - vp.fecha_entrada))/3600 AS horas_adentro
+        FROM visitantes_parqueo vp
+        LEFT JOIN zonas_parqueo z ON vp.zona_id = z.id
+        LEFT JOIN sedes s ON z.sede_id = s.id
+        WHERE vp.fecha_salida IS NULL AND vp.fecha_entrada < NOW() - INTERVAL '12 hours'
+        ORDER BY horas_adentro DESC;
+      `;
+      const { rows } = await pool.query(query);
+      return rows;
+    } catch (error) {
+      console.error('Error en reportePernoctas:', error.message);
+      throw new Error('Error al generar el reporte de pernoctas');
+    }
   }
 }
 

@@ -52,12 +52,16 @@ const actualizar = async (req, res, next) => {
     next(error);
   }
 };
-
-// Controlador para listar todos los vehículos (solo para administradores)
 const listarTodos = async (req, res, next) => {
   try {
-    const vehiculos = await vehiculoService.listarTodos();
-    res.json({ success: true, data: vehiculos });
+    // Capturamos los parámetros de paginación de la URL, con valores por defecto
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const resultado = await vehiculoService.listarTodos(page, limit);
+    
+    // Retornamos la data estructurada con sus metadatos
+    res.json({ success: true, data: resultado });
   } catch (error) {
     next(error);
   }
@@ -76,7 +80,9 @@ const obtenerUno = async (req, res, next) => {
 // Controlador para eliminar un vehículo (solo si pertenece al usuario autenticado o es admin)
 const eliminar = async (req, res, next) => {
   try {
-    await vehiculoService.eliminar(req.params.id);
+    const personaId = req.usuario.rol === 'Administrador' ? null : req.usuario.persona_id; // Si es admin, pasa null para ignorar la regla de propiedad
+    
+    await vehiculoService.eliminar(req.params.id, personaId);
     res.json({ success: true, message: 'Vehículo eliminado correctamente' });
   } catch (error) {
     next(error);

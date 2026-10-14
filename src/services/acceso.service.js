@@ -1,10 +1,10 @@
 const pool = require('../config/db');
 const ApiError = require('../utils/ApiError');
+// 1. IMPORTAR SERVICIO DE NOTIFICACIONES
+const notificacionService = require('./notificacion.service'); 
 
 class AccesoService {
-
-// LÓGICA DE ESCANEO QR (ESCANEO QR)
-// LÓGICA DE ESCANEO QR (ESCANEO QR)
+  // LÓGICA DE ESCANEO QR (ESCANEO QR)
   async procesarEscaneoQR(qr_token, zona_id, guarda_id, observacion) {
     const cliente = await pool.connect();
 
@@ -29,14 +29,14 @@ class AccesoService {
 
       const datosRespuesta = {
         vehiculo: { placa: vehiculo.placa, marca: vehiculo.marca, tipo: vehiculo.tipo },
-        propietario: { 
-          nombre: vehiculo.nombres_completos, 
-          rol: vehiculo.rol || 'Sin rol', 
-          codigo_universitario: vehiculo.codigo_universitario 
+        propietario: {
+          nombre: vehiculo.nombres_completos,
+          rol: vehiculo.rol || 'Sin rol',
+          codigo_universitario: vehiculo.codigo_universitario
         }
       };
 
-      // 🪄 2. VALIDACIÓN ESTRICTA DE DOBLE INGRESO
+      // 2. VALIDACIÓN ESTRICTA DE DOBLE INGRESO
       // Buscamos si el vehículo ya está dentro de ALGUNA zona en cualquier sede
       const { rows: registrosActivos } = await cliente.query(
         `SELECT rp.id, rp.zona_id, z.nombre as zona_nombre, s.nombre as sede_nombre
@@ -64,23 +64,39 @@ class AccesoService {
           );
 
           await cliente.query('COMMIT');
-          return { 
-            accion: 'SALIDA', 
+
+          // ====================================================================
+          // 🔔 NOTIFICACIÓN PUSH: DISPARADOR DE SALIDA 
+          // Se ejecuta en segundo plano (.catch evita que un error de red rompa la API)
+          // ====================================================================
+          notificacionService.notificarDuenioVehiculo(
+            vehiculo.placa, 
+            registro.sede_nombre || 'la sede', 
+            registro.zona_nombre, 
+            'salida'
+          ).catch(err => console.error('[Notificaciones] Error enviando Push de Salida:', err));
+
+          return {
+            accion: 'SALIDA',
             mensaje: 'Salida registrada exitosamente.',
             datos: datosRespuesta
           };
         } else {
           //  ¿Lo están escaneando en una zona DIFERENTE? -> BLOQUEO. No ha salido de la anterior.
           throw new ApiError(
-            400, 
+            400,
             `Acceso Denegado: El vehículo registra un ingreso previo sin salida en [${registro.sede_nombre} - ${registro.zona_nombre}]. Debe salir de esa zona primero.`
           );
         }
       }
 
       // --- ESCENARIO: EL VEHÍCULO ESTÁ AFUERA (INGRESO NUEVO) ---
+      // Se agregó 'z.nombre' y 's.nombre' a la consulta para usarlos en el mensaje Push
       const { rows: zonas } = await cliente.query(
-        'SELECT capacidad_total, cupos_ocupados, tipo_permitido FROM zonas_parqueo WHERE id = $1 FOR UPDATE',
+        `SELECT z.capacidad_total, z.cupos_ocupados, z.tipo_permitido, z.nombre AS zona_nombre, s.nombre AS sede_nombre 
+         FROM zonas_parqueo z 
+         LEFT JOIN sedes s ON z.sede_id = s.id 
+         WHERE z.id = $1 FOR UPDATE OF z`, // <--- Agregamos 'OF z' aquí
         [zona_id]
       );
       if (zonas.length === 0) throw new ApiError(404, 'La zona de parqueo indicada no existe.');
@@ -88,14 +104,17 @@ class AccesoService {
 
       // Validar Tipo
       if (zona.tipo_permitido !== vehiculo.tipo && zona.tipo_permitido !== 'Mixto') {
-        throw new ApiError(400, `Esta zona es exclusiva para ${zona.tipo_permitido}s. Vehículo detectado: ${vehiculo.tipo}`);
+        throw new ApiError(
+          400,
+          `Esta zona es exclusiva para ${zona.tipo_permitido}s. Vehículo detectado: ${vehiculo.tipo}`
+        );
       }
       // Validar Cupos
       if (zona.cupos_ocupados >= zona.capacidad_total) {
         throw new ApiError(400, 'Acceso Denegado: La zona de parqueo está llena.');
       }
 
-      // 🪄 REGISTRO CON EL ID DEL GUARDA (usuario_admin_id)
+      // REGISTRO CON EL ID DEL GUARDA (usuario_admin_id)
       await cliente.query(
         `INSERT INTO registros_parqueo (vehiculo_id, zona_id, usuario_admin_id, fecha_entrada, observacion) 
          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4)`,
@@ -108,8 +127,20 @@ class AccesoService {
       );
 
       await cliente.query('COMMIT');
-      return { 
-        accion: 'INGRESO', 
+
+      // ====================================================================
+      // 🔔 NOTIFICACIÓN PUSH: DISPARADOR DE INGRESO
+      // Se ejecuta de manera asíncrona una vez el COMMIT ha sido exitoso
+      // ====================================================================
+      notificacionService.notificarDuenioVehiculo(
+        vehiculo.placa, 
+        zona.sede_nombre || 'la sede', 
+        zona.zona_nombre, 
+        'ingreso'
+      ).catch(err => console.error('[Notificaciones] Error enviando Push de Ingreso:', err));
+
+      return {
+        accion: 'INGRESO',
         mensaje: 'Ingreso autorizado.',
         datos: datosRespuesta
       };
@@ -117,7 +148,7 @@ class AccesoService {
       await cliente.query('ROLLBACK');
       throw error;
     } finally {
-      cliente.release(); 
+      cliente.release();
     }
   }
 
@@ -212,7 +243,6 @@ class AccesoService {
     const { rows } = await pool.query(query, [persona_id]);
     return rows;
   }
-
 }
 
 module.exports = new AccesoService();

@@ -12,8 +12,17 @@ const router = Router();
 router.use(verificarToken);
 
 // --- RUTAS DE INSTITUCIONES (Siguen siendo exclusivas del Admin) ---
-router.post('/instituciones', requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA), validarEsquema(institucionSchema), infraController.crearInstitucion);
-router.get('/instituciones', requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA), infraController.listarInstituciones);
+router.post(
+  '/instituciones',
+  requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA),
+  validarEsquema(institucionSchema),
+  infraController.crearInstitucion
+);
+router.get(
+  '/instituciones',
+  requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA),
+  infraController.listarInstituciones
+);
 router.put(
   '/instituciones/:id',
   requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA),
@@ -26,8 +35,22 @@ router.put(
 router.get('/sedes', requierePermiso(PERMISOS.VER_SEDES), infraController.listarSedes);
 
 // 3. El resto de la gestión de sedes se protege solo para el Administrador
-router.post('/sedes', requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA), validarEsquema(sedeSchema), infraController.crearSede);
-router.put('/sedes/:id', requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA), validarEsquema(sedeSchema), infraController.actualizarSede);
-router.delete('/sedes/:id', requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA), infraController.eliminarSede);
+router.post(
+  '/sedes',
+  requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA),
+  validarEsquema(sedeSchema),
+  infraController.crearSede
+);
+router.put(
+  '/sedes/:id',
+  requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA),
+  validarEsquema(sedeSchema),
+  infraController.actualizarSede
+);
+router.delete(
+  '/sedes/:id',
+  requierePermiso(PERMISOS.GESTIONAR_INFRAESTRUCTURA),
+  infraController.eliminarSede
+);
 
 module.exports = router;

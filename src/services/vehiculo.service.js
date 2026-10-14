@@ -10,32 +10,36 @@ const nodeCanvas = require('canvas');
 const path = require('path');
 
 class VehiculoService {
-
+  
+  // ==========================================
+  // CREAR VEHÍCULO
+  // ==========================================
   async crear(personaId, datos) {
-    // 1. Validar límite de 2 vehículos
+    // 1. Validar límite de 2 vehículos ACTIVOS
+    // Se añade "AND estado = 'Activo'" para que los eliminados lógicamente no cuenten
     const { rows: conteo } = await pool.query(
-      'SELECT COUNT(*) FROM vehiculos WHERE persona_id = $1',
+      "SELECT COUNT(*) FROM vehiculos WHERE persona_id = $1 AND estado = 'Activo'",
       [personaId]
     );
+    
     if (parseInt(conteo[0].count) >= 2) {
-      throw new ApiError(403, 'Has alcanzado el límite máximo de 2 vehículos registrados.');
+      throw new ApiError(403, 'Has alcanzado el límite máximo de 2 vehículos activos registrados.');
     }
 
     // 2. Insertar en la BD y obtener el UUID (qr_token) generado automáticamente
-    // Quitamos la columna 'url_qr' ya que usaremos el nuevo endpoint dinámico.
     const queryInsert = `
-      INSERT INTO vehiculos (persona_id, placa, tipo, marca, modelo, color, url_foto)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO vehiculos (persona_id, placa, tipo, marca, modelo, color, url_foto, estado)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'Activo')
       RETURNING id, qr_token, placa
     `;
     const valores = [
       personaId,
-      datos.placa,
+      datos.placa.trim().toUpperCase(), // Buena práctica: normalizar placa
       datos.tipo,
       datos.marca,
       datos.modelo,
       datos.color,
-      datos.url_foto
+      datos.url_foto || null
     ];
 
     try {
@@ -47,8 +51,9 @@ class VehiculoService {
 
       return { ...vehiculoNuevo, url_qr: urlQrDinamica };
     } catch (error) {
-      if (error.code === '23505')
+      if (error.code === '23505') {
         throw new ApiError(400, 'Esta placa ya está registrada en el sistema.');
+      }
       throw error;
     }
   }
@@ -60,24 +65,24 @@ class VehiculoService {
     const query = 'SELECT placa FROM vehiculos WHERE qr_token = $1';
     const { rows } = await pool.query(query, [qrToken]);
     if (rows.length === 0) throw new ApiError(404, 'Token QR inválido.');
-    
+
     const placa = rows[0].placa; // 🪄 Guardamos la placa
 
     // 2. Configuración de diseño del QR
     const logoPath = path.join(__dirname, '../assets/logo_unipark.png');
 
     const qrApi = new QRCodeStyling({
-      nodeCanvas: nodeCanvas, 
+      nodeCanvas: nodeCanvas,
       width: 400,
       height: 400,
-      data: qrToken, 
+      data: qrToken,
       margin: 5,
       dotsOptions: { color: '#000000', type: 'square' }, // Optimizado (Negro/Cuadrado)
       backgroundOptions: { color: '#ffffff' },
       imageOptions: { hideBackgroundDots: true, imageSize: 0.4, margin: 5 },
       image: logoPath,
-      cornersSquareOptions: { color: '#E4AB10', type: 'square' }, 
-      cornersDotOptions: { color: '#E4AB10', type: 'square' } 
+      cornersSquareOptions: { color: '#E4AB10', type: 'square' },
+      cornersDotOptions: { color: '#E4AB10', type: 'square' }
     });
 
     // 3. Generar el QR base como Buffer
@@ -86,7 +91,7 @@ class VehiculoService {
     // =========================================================
     // 🪄 4. MAGIA CON CANVAS: Juntar el QR y el texto (CORREGIDO)
     // =========================================================
-    
+
     // Configuramos un lienzo más alto usando TU variable 'nodeCanvas'
     const canvasWidth = 400;
     const canvasHeight = 460;
@@ -106,7 +111,7 @@ class VehiculoService {
     ctx.font = 'bold 36px sans-serif'; // Tamaño y tipo de fuente
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    
+
     // Posicionamos el texto justo en el centro del ancho y en el espacio inferior
     ctx.fillText(`PLACA: ${placa.toUpperCase()}`, canvasWidth / 2, 430);
 
@@ -116,12 +121,12 @@ class VehiculoService {
 
   // (manten listarMisVehiculos y actualizar igual que antes) ...
   async listarMisVehiculos(personaId) {
-    const { rows } = await pool.query('SELECT * FROM vehiculos WHERE persona_id = $1', [personaId]);
+    const { rows } = await pool.query('SELECT * FROM vehiculos WHERE persona_id = $1 AND estado = $2', [personaId, 'Activo']);
     // Construimos la URL dinámica al listar
     return rows.map((v) => ({ ...v, url_qr: `/api/v1/vehiculos/qr/${v.qr_token}.png` }));
   }
 
-  // 
+  //
   async actualizar(id, datos) {
     const query = `
       UPDATE vehiculos 
@@ -147,22 +152,53 @@ class VehiculoService {
     return vehiculoActualizado;
   }
 
-  // 1. Para el Administrador: Ver todos los vehículos con los datos de su dueño
-  async listarTodos() {
-    const query = `
-      SELECT v.*, p.nombres_completos, p.numero_documento, p.codigo_universitario 
-      FROM vehiculos v
-      JOIN personas p ON v.persona_id = p.id
-      ORDER BY v.fecha_registro DESC
-    `;
-    const { rows } = await pool.query(query);
-    // Agregamos la URL dinámica a todos
-    return rows.map((v) => ({ ...v, url_qr: `/api/v1/vehiculos/qr/${v.qr_token}.png` }));
+// 1. Para el Administrador: Ver todos los vehículos paginados
+  async listarTodos(page = 1, limit = 10) {
+    try {
+      const offset = (page - 1) * limit;
+
+      // Primero contamos el total de vehículos activos para saber cuántas páginas hay
+      const countQuery = `SELECT COUNT(*) FROM vehiculos WHERE estado = 'Activo'`;
+      const countResult = await pool.query(countQuery);
+      const totalRegistros = parseInt(countResult.rows[0].count);
+
+      // Luego consultamos solo la porción de datos (LIMIT y OFFSET)
+      const query = `
+        SELECT v.*, p.nombres_completos, p.numero_documento, p.codigo_universitario 
+        FROM vehiculos v
+        JOIN personas p ON v.persona_id = p.id
+        WHERE v.estado = 'Activo'
+        ORDER BY v.fecha_registro DESC
+        LIMIT $1 OFFSET $2
+      `;
+      
+      const { rows } = await pool.query(query, [limit, offset]);
+      
+      const data = rows.map((v) => ({ 
+        ...v, 
+        url_qr: `/api/v1/vehiculos/qr/${v.qr_token}.png` 
+      }));
+
+      // Retornamos el formato estructurado con paginación
+      return {
+        data,
+        meta: {
+          total: totalRegistros,
+          paginaActual: page,
+          totalPaginas: Math.ceil(totalRegistros / limit),
+        }
+      };
+    } catch (error) {
+      // Log interno para el desarrollador (opcional pero recomendado)
+      console.error('Error en listarTodos (vehiculoService):', error.message);
+      
+      // Lanzamos un error controlado hacia el controlador
+      throw new ApiError(500, 'Error interno al consultar el directorio de vehículos.'); 
+    }
   }
 
   // 2. Para el Dueño o Admin: Ver el detalle de un solo vehículo
   async obtenerPorId(id) {
-    
     const query = `
       SELECT 
         v.*, 
@@ -173,9 +209,9 @@ class VehiculoService {
       JOIN personas p ON v.persona_id = p.id
       WHERE v.id = $1
     `;
-    
+
     const { rows } = await pool.query(query, [id]);
-    
+
     if (rows.length === 0) throw new ApiError(404, 'Vehículo no encontrado');
 
     const vehiculo = rows[0];
@@ -183,11 +219,26 @@ class VehiculoService {
     return vehiculo;
   }
 
-  // 3. Para el Dueño o Admin: Eliminar un vehículo
-  async eliminar(id) {
-    const { rows } = await pool.query('DELETE FROM vehiculos WHERE id = $1 RETURNING *', [id]);
-    if (rows.length === 0) throw new ApiError(404, 'Vehículo no encontrado');
-    return rows[0];
+  // ==========================================
+  // ELIMINAR VEHÍCULO (Borrado Lógico)
+  // ==========================================
+  async eliminar(idVehiculo, personaId) {
+    // En lugar de DELETE, hacemos un UPDATE cambiando el estado a 'Inactivo'
+    // También validamos que el vehículo pertenezca a la persona que intenta borrarlo (Seguridad)
+    const queryUpdate = `
+      UPDATE vehiculos 
+      SET estado = 'Inactivo' 
+      WHERE id = $1 AND (persona_id = $2 OR $2 IS NULL)
+      RETURNING id
+    `;
+    
+    const { rowCount } = await pool.query(queryUpdate, [idVehiculo, personaId]);
+    
+    if (rowCount === 0) {
+      throw new ApiError(404, 'Vehículo no encontrado o no tienes permisos para eliminarlo.');
+    }
+    
+    return true;
   }
 
   // 4. Para el Dueño: Actualizar la foto del vehículo (y borrar la anterior si existía)
@@ -219,7 +270,6 @@ class VehiculoService {
 
     return vehiculoActualizado;
   }
-
 }
 
 module.exports = new VehiculoService();

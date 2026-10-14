@@ -2,7 +2,6 @@ const pool = require('../config/db');
 const ApiError = require('../utils/ApiError');
 
 class HistorialService {
-  
   // 1. Obtiene TODOS los registros (Para Admin y Guarda)
   async obtenerHistorialGlobal() {
     try {
@@ -45,10 +44,12 @@ class HistorialService {
       `;
       const { rows } = await pool.query(query);
       return rows;
-      
     } catch (error) {
       console.error(' Error BD en obtenerHistorialGlobal:', error.message);
-      throw new ApiError(500, 'Error interno al intentar obtener el historial global de parqueaderos.');
+      throw new ApiError(
+        500,
+        'Error interno al intentar obtener el historial global de parqueaderos.'
+      );
     }
   }
 
@@ -56,7 +57,10 @@ class HistorialService {
   async obtenerHistorialPorPersona(persona_id) {
     // Protección Nivel 1: Evitar consultas inválidas a la BD
     if (!persona_id) {
-      throw new ApiError(400, 'No se pudo identificar la persona asociada a la cuenta para cargar el historial.');
+      throw new ApiError(
+        400,
+        'No se pudo identificar la persona asociada a la cuenta para cargar el historial.'
+      );
     }
 
     try {
@@ -82,7 +86,6 @@ class HistorialService {
       `;
       const { rows } = await pool.query(query, [persona_id]);
       return rows;
-
     } catch (error) {
       // Dejamos rastro en consola para debug interno
       console.error(` Error BD en obtenerHistorialPorPersona [ID: ${persona_id}]:`, error.message);
@@ -105,10 +108,12 @@ class HistorialService {
       return rows;
     } catch (error) {
       console.error('Error BD en obtenerHistorialLogins:', error.message);
-      throw new ApiError(500, 'Error interno al intentar obtener el historial de accesos al sistema.');
+      throw new ApiError(
+        500,
+        'Error interno al intentar obtener el historial de accesos al sistema.'
+      );
     }
   }
-
 }
 
 module.exports = new HistorialService();

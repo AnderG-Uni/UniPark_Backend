@@ -17,6 +17,10 @@ const accesoRoutes = require('./routes/acceso.routes');
 const infraestructuraRoutes = require('./routes/infraestructura.routes');
 const reportesRoutes = require('./routes/reportes.routes');
 const historialRoutes = require('./routes/historial.routes');
+const notificacionRoutes = require('./routes/notificacion.routes');
+
+//servicio de crontabs
+const { iniciarCronJobs } = require('./utils/cronJobs');
 
 const app = express();
 
@@ -42,6 +46,9 @@ app.use(
   })
 );
 
+// Iniciar las tareas en segundo plano
+iniciarCronJobs();
+
 // MIDDLEWARE DE AUDITORÍA
 app.use(auditMiddleware);
 
@@ -58,7 +65,7 @@ app.use('/api/v1/acceso', accesoRoutes);
 app.use('/api/v1/admin', infraestructuraRoutes);
 app.use('/api/v1/reportes', reportesRoutes);
 app.use('/api/v1/historial', historialRoutes);
-
+app.use('/api/v1/notificaciones', notificacionRoutes);
 // Middleware de Manejo de Errores (Debe ir al final, después de todas las rutas)
 app.use(errorHandler);
 

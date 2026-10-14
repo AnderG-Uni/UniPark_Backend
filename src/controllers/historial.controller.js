@@ -15,7 +15,9 @@ const obtenerHistorialPorPersona = async (req, res, next) => {
   try {
     // 🪄 CORRECCIÓN AQUÍ: Usamos req.usuario tal como lo define tu auth.middleware.js
     if (!req.usuario || !req.usuario.persona_id) {
-       return res.status(401).json(new ApiResponse(401, null, 'No autorizado. Faltan datos de usuario en la petición.'));
+      return res
+        .status(401)
+        .json(new ApiResponse(401, null, 'No autorizado. Faltan datos de usuario en la petición.'));
     }
 
     const historial = await historialService.obtenerHistorialPorPersona(req.usuario.persona_id);

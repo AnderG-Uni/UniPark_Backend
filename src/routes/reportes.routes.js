@@ -10,12 +10,32 @@ const router = Router();
 router.use(verificarToken);
 
 // 2. RUTA PÚBLICA (Para usuarios con el permiso básico de ver disponibilidad)
-router.get('/ocupacion', requierePermiso(PERMISOS.VER_REPORTE_OCUPACION), reportesController.obtenerOcupacionZonas);
+router.get(
+  '/ocupacion',
+  requierePermiso(PERMISOS.VER_REPORTE_OCUPACION),
+  reportesController.obtenerOcupacionZonas
+);
 
 // 3. RUTAS ESTRICTAS (Solo para Administradores / Guardas / Directivos)
-router.get('/horas-pico', requierePermiso(PERMISOS.VER_REPORTES), reportesController.obtenerHorasPico);
-router.get('/distribucion', requierePermiso(PERMISOS.VER_REPORTES), reportesController.obtenerDistribucion);
-router.get('/auditoria-guardas', requierePermiso(PERMISOS.VER_REPORTES), reportesController.obtenerAuditoriaGuardas);
-router.get('/pernoctas', requierePermiso(PERMISOS.VER_REPORTES), reportesController.obtenerPernoctas);
+router.get(
+  '/horas-pico',
+  requierePermiso(PERMISOS.VER_REPORTES),
+  reportesController.obtenerHorasPico
+);
+router.get(
+  '/distribucion',
+  requierePermiso(PERMISOS.VER_REPORTES),
+  reportesController.obtenerDistribucion
+);
+router.get(
+  '/auditoria-guardas',
+  requierePermiso(PERMISOS.VER_REPORTES),
+  reportesController.obtenerAuditoriaGuardas
+);
+router.get(
+  '/pernoctas',
+  requierePermiso(PERMISOS.VER_REPORTES),
+  reportesController.obtenerPernoctas
+);
 
 module.exports = router;

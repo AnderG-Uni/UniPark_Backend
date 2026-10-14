@@ -22,10 +22,8 @@ const PERMISOS = {
   // Módulo Zonas
   VER_ZONAS: 'VER_ZONAS', // Todos pueden ver las zonas, pero solo algunos roles pueden gestionarlas
   GESTIONAR_ZONAS: 'GESTIONAR_ZONAS', // Crear, editar, borrar
-  VER_SEDES: 'VER_SEDES', // Todos pueden ver las sedes, pero solo algunos roles pueden gestionarlas
-
+  VER_SEDES: 'VER_SEDES' // Todos pueden ver las sedes, pero solo algunos roles pueden gestionarlas
 };
-
 
 // Asignamos los permisos a cada rol de tu base de datos
 const ROLES_PERMISOS = {

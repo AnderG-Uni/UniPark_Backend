@@ -4,9 +4,8 @@ const jwt = require('jsonwebtoken');
 const ApiError = require('../utils/ApiError');
 
 class AuthService {
-
   async login(correo, clavePlana) {
-    const query = 'SELECT id, persona_id, correo, clave, rol FROM usuarios WHERE correo = $1';
+    const query = 'SELECT u.id, u.persona_id, u.correo, u.clave, u.rol, p.nombres_completos FROM usuarios u INNER JOIN personas p ON u.persona_id = p.id WHERE u.correo = $1';
     const { rows } = await pool.query(query, [correo]);
     const usuario = rows[0];
 
@@ -15,10 +14,9 @@ class AuthService {
     const claveValida = await bcrypt.compare(clavePlana, usuario.clave);
     if (!claveValida) throw new ApiError(401, 'Credenciales incorrectas');
 
-    await pool.query(
-      'UPDATE usuarios SET ultimo_login = CURRENT_TIMESTAMP WHERE id = $1', 
-      [usuario.id]
-    );
+    await pool.query('UPDATE usuarios SET ultimo_login = CURRENT_TIMESTAMP WHERE id = $1', [
+      usuario.id
+    ]);
 
     // 2. A Metemos los datos dentro del payload del Token
     const accessToken = jwt.sign(
@@ -45,17 +43,17 @@ class AuthService {
       const { rows } = await pool.query('SELECT id, persona_id, rol FROM usuarios WHERE id = $1', [
         decodificado.id
       ]);
-      
+
       if (rows.length === 0) throw new ApiError(401, 'El usuario ya no existe');
 
       const usuario = rows[0];
 
       // Generamos el nuevo token con el payload
       const nuevoAccessToken = jwt.sign(
-        { 
-          id: usuario.id, 
-          persona_id: usuario.persona_id, 
-          rol: usuario.rol 
+        {
+          id: usuario.id,
+          persona_id: usuario.persona_id,
+          rol: usuario.rol
         },
         process.env.JWT_ACCESS_SECRET,
         { expiresIn: process.env.JWT_ACCESS_EXPIRATION }
@@ -73,7 +71,6 @@ class AuthService {
   }
 
   async registroEstudiante(datos) {
-    
     // 0. Validar si el correo ya existe ANTES de procesar lo demás
     const existe = await pool.query('SELECT id FROM usuarios WHERE correo = $1', [datos.correo]);
     if (existe.rows.length > 0) {
@@ -99,10 +96,14 @@ class AuthService {
         RETURNING id
       `;
       const valoresPersona = [
-        datos.nombres_completos, datos.tipo_documento, datos.numero_documento,
-        datos.telefono, datos.codigo_universitario, datos.carrera_dependencia
+        datos.nombres_completos,
+        datos.tipo_documento,
+        datos.numero_documento,
+        datos.telefono,
+        datos.codigo_universitario,
+        datos.carrera_dependencia
       ];
-      
+
       const resPersona = await client.query(queryPersona, valoresPersona);
       const nuevaPersonaId = resPersona.rows[0].id;
 
@@ -113,16 +114,15 @@ class AuthService {
         RETURNING id, correo, rol
       `;
       const valoresUsuario = [datos.correo, claveHasheada, 'Estudiante', nuevaPersonaId];
-      
+
       const resUsuario = await client.query(queryUsuario, valoresUsuario);
 
       await client.query('COMMIT'); // GUARDA TODO SI NO HUBO ERRORES
 
       return resUsuario.rows[0];
-
     } catch (error) {
       await client.query('ROLLBACK'); // DESHACE TODO SI ALGO FALLÓ
-      
+
       // Validamos también si la base de datos se queja del número de documento duplicado
       if (error.code === '23505') {
         throw new ApiError(400, 'El documento de identidad o correo ya se encuentran registrados.');
@@ -132,6 +132,5 @@ class AuthService {
       client.release(); // Libera la conexión de vuelta al pool
     }
   }
-
 }
 module.exports = new AuthService();

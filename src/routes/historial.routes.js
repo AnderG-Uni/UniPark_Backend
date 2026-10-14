@@ -1,6 +1,6 @@
 const { Router } = require('express');
-const { 
-  obtenerHistorialGlobal, 
+const {
+  obtenerHistorialGlobal,
   obtenerHistorialPorPersona,
   obtenerHistorialLogins
 } = require('../controllers/historial.controller');
