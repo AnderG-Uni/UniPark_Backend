@@ -22,15 +22,31 @@ const notificacionRoutes = require('./routes/notificacion.routes');
 //servicio de crontabs
 const { iniciarCronJobs } = require('./utils/cronJobs');
 
+const origenesPermitidos = [
+  process.env.FRONTEND_URL, // Tu web QA: https://qa-parking.orcait.com.co
+  'http://localhost:3000',  // Para desarrollo web local (opcional)
+  'http://localhost:8081',  // Para desarrollo web local con Expo (opcional)
+];
+
 const app = express();
 
 // Middlewares Globales
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
-    credentials: true // para que el frontend pueda enviar y recibir cookies
+    origin: function (origin, callback) {
+      // 1. Si no hay origen (!origin): Petición desde App Móvil (React Native), Postman o servidor. -> PERMITIDO
+      // 2. Si el origen está en la lista: Petición desde tu Web QA o Localhost. -> PERMITIDO
+      if (!origin || origenesPermitidos.includes(origin)) {
+        callback(null, true);
+      } else {
+        // Bloquea cualquier otra web maliciosa que intente consumir tu API
+        callback(new Error('No permitido por la política de CORS'));
+      }
+    },
+    credentials: true // Permite el envío/recepción de cookies y headers de autorización
   })
 );
+
 app.use(helmet()); // Protege cabeceras HTTP
 app.use(express.json()); // Parsea el body como JSON
 app.use(cookieParser()); // Parsea las cookies
