@@ -36,6 +36,29 @@ const uploadVehiculo = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
+
+const storageVisitantes = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(__dirname, '../assets/visitantes');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const extension = path.extname(file.originalname);
+    cb(null, 'visitante-' + uniqueSuffix + extension);
+  }
+});
+
+// 3. Exportamos el middleware configurado (Límite de 5MB)
+const uploadVisitante = multer({
+  storage: storageVisitantes,
+  fileFilter: fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
+
+
+
 // 4. Configuración para Zonas de Parqueo
 const storageZonas = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -58,4 +81,6 @@ const uploadZona = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-module.exports = { uploadVehiculo, uploadZona };
+
+
+module.exports = { uploadVehiculo, uploadZona, uploadVisitante };

@@ -1,6 +1,5 @@
 const pool = require('../config/db');
 const ApiError = require('../utils/ApiError');
-// 1. IMPORTAR SERVICIO DE NOTIFICACIONES
 const notificacionService = require('./notificacion.service'); 
 
 class AccesoService {
@@ -153,7 +152,7 @@ class AccesoService {
   }
 
   // LÓGICA DE VISITANTES (CON PLACA MANUAL)
-  async procesarVisitante(placa, zona_id, guarda_id, observacion) {
+async procesarVisitante({ placa, zona_id, guarda_id, observacion, tipo_vehiculo, url_foto }) {
     const cliente = await pool.connect();
 
     try {
@@ -188,11 +187,12 @@ class AccesoService {
         };
       }
 
+      
       // --- ESCENARIO B: EL VISITANTE VA A ENTRAR ---
       // Bloqueamos la zona para asegurar el cupo
       const { rows: zonas } = await cliente.query(
         'SELECT capacidad_total, cupos_ocupados FROM zonas_parqueo WHERE id = $1 FOR UPDATE',
-        [zona_id]
+        [zona_id] // Ahora zona_id sí tiene valor numérico
       );
 
       if (zonas.length === 0) throw new ApiError(404, 'La zona de parqueo indicada no existe.');
@@ -203,11 +203,19 @@ class AccesoService {
         throw new ApiError(400, 'Acceso Denegado: La zona de parqueo está llena.');
       }
 
-      // Insertar el nuevo visitante
+      // Insertar el nuevo visitante INCLUYENDO TIPO DE VEHÍCULO Y FOTO
       await cliente.query(
-        `INSERT INTO visitantes_parqueo (placa, zona_id, usuario_admin_id, fecha_entrada, observacion) 
-         VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4)`,
-        [placa, zona_id, guarda_id, observacion || null]
+        `INSERT INTO visitantes_parqueo 
+        (placa, zona_id, usuario_admin_id, fecha_entrada, observacion, tipo_vehiculo, url_foto) 
+         VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6)`,
+        [
+          placa, 
+          zona_id, 
+          guarda_id, 
+          observacion || null, 
+          tipo_vehiculo || 'Carro', 
+          url_foto || null
+        ]
       );
 
       // Ocupar el cupo restando a la disponibilidad de la zona
@@ -227,7 +235,7 @@ class AccesoService {
     } finally {
       cliente.release(); // Siempre liberamos la conexión
     }
-  }
+}
 
   // HISTORIAL DE ACCESOS (ESTUDIANTES/DOCENTES)
   async obtenerMiHistorial(persona_id) {

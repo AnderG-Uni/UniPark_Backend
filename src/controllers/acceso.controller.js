@@ -1,4 +1,5 @@
 const accesoService = require('../services/acceso.service');
+const ApiError = require('../utils/ApiError');
 
 // Controlador para manejar el escaneo de QR, registro de visitantes y consulta de historial
 const escanearQR = async (req, res, next) => {
@@ -29,20 +30,65 @@ const escanearQR = async (req, res, next) => {
 
 // Controlador para registrar un visitante manualmente por parte del Guarda
 const registrarVisitante = async (req, res, next) => {
-  try {
-    const { placa, zona_id, observacion } = req.body;
-    const guarda_id = req.usuario.id; // Extraído del Token JWT del Guarda
 
-    const resultado = await accesoService.procesarVisitante(placa, zona_id, guarda_id, observacion);
+try {
+    // 1. Extraemos los campos de texto del FormData
+    const { placa, zona_id, observacion, tipo_vehiculo } = req.body;
+
+    if (!placa || !zona_id) {
+      throw new ApiError(400, "Placa y zona son obligatorias para registrar un visitante.");
+    }
+
+    let urlPublicaFoto = null;
+
+    // 2. Si el middleware capturó una foto, construimos la URL pública
+    if (req.file) {
+      urlPublicaFoto = `/assets/visitantes/${req.file.filename}`;
+    }
+
+    // 3. Pasamos todos los datos (incluyendo la foto opcional) al servicio
+    const resultado = await accesoService.procesarVisitante({
+      placa: placa.toUpperCase(),
+      zona_id: parseInt(zona_id),
+      observacion,
+      tipo_vehiculo: tipo_vehiculo || 'Carro', // Por defecto Carro si no lo envían
+      url_foto: urlPublicaFoto,                // URL estática para express
+      guarda_id: req.usuario.id                // Obtenido del token JWT
+    });
+
+   // res.status(201).json({
+    //  success: true,
+    //  message: 'Acceso de visitante registrado exitosamente',
+    //  data: resultado
+    //});
 
     res.status(200).json({
       success: true,
       accion: resultado.accion,
       message: resultado.mensaje
     });
+
   } catch (error) {
     next(error);
   }
+
+
+
+
+  //try {
+  //  const { placa, zona_id, observacion } = req.body;
+  //  const guarda_id = req.usuario.id; // Extraído del Token JWT del Guarda
+
+  //  const resultado = await accesoService.procesarVisitante(placa, zona_id, guarda_id, observacion);
+
+  //  res.status(200).json({
+ //     success: true,
+  //    accion: resultado.accion,
+  //    message: resultado.mensaje
+  //  });
+  //} catch (error) {
+  //  next(error);
+  //}
 };
 
 // Controlador para que un usuario pueda consultar su propio historial de accesos

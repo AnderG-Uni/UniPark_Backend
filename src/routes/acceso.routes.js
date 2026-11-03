@@ -2,9 +2,11 @@ const { Router } = require('express');
 const { escanearQR, registrarVisitante, miHistorial } = require('../controllers/acceso.controller');
 const { verificarToken } = require('../middlewares/auth.middleware');
 const { validarEsquema } = require('../middlewares/validate.middleware');
-const { escaneoSchema, visitanteSchema } = require('../utils/validators/acceso.schema');
 const { requierePermiso } = require('../middlewares/pbac.middleware');
+const { uploadVisitante } = require('../middlewares/upload.middleware');
+const { escaneoSchema, visitanteSchema } = require('../utils/validators/acceso.schema');
 const { PERMISOS } = require('../config/roles');
+
 
 const router = Router();
 router.use(verificarToken);
@@ -21,7 +23,7 @@ router.post(
 router.post(
   '/visitante',
   requierePermiso(PERMISOS.REGISTRAR_VISITANTE),
-  validarEsquema(visitanteSchema),
+  uploadVisitante.single('foto'),
   registrarVisitante
 );
 

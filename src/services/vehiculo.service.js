@@ -61,12 +61,11 @@ class VehiculoService {
   // ---  Genera la imagen QR con estilo predefinido---
   async generarBufferImagenQR(qrToken) {
     // 1. Verificar que el token exista y traer la PLACA
-    // 🪄 Cambiamos "SELECT 1" por "SELECT placa"
     const query = 'SELECT placa FROM vehiculos WHERE qr_token = $1';
     const { rows } = await pool.query(query, [qrToken]);
     if (rows.length === 0) throw new ApiError(404, 'Token QR inválido.');
 
-    const placa = rows[0].placa; // 🪄 Guardamos la placa
+    const placa = rows[0].placa; // Guardamos la placa
 
     // 2. Configuración de diseño del QR
     const logoPath = path.join(__dirname, '../assets/logo_unipark.png');
@@ -77,24 +76,24 @@ class VehiculoService {
       height: 400,
       data: qrToken,
       margin: 5,
-      dotsOptions: { color: '#000000', type: 'square' }, // Optimizado (Negro/Cuadrado)
+      dotsOptions: { color: '#5b5b5b', type: 'rounded' }, // Optimizado (Negro/Cuadrado)
       backgroundOptions: { color: '#ffffff' },
-      imageOptions: { hideBackgroundDots: true, imageSize: 0.4, margin: 5 },
+      imageOptions: { hideBackgroundDots: true, imageSize: 0.4, margin: 0 },
       image: logoPath,
-      cornersSquareOptions: { color: '#E4AB10', type: 'square' },
-      cornersDotOptions: { color: '#E4AB10', type: 'square' }
+      cornersSquareOptions: { color: '#E4AB10', type: 'extra-rounded' },
+      cornersDotOptions: { color: '#E4AB10', type: '' }
     });
 
     // 3. Generar el QR base como Buffer
     const qrBuffer = await qrApi.getRawData('png');
 
     // =========================================================
-    // 🪄 4. MAGIA CON CANVAS: Juntar el QR y el texto (CORREGIDO)
+    // 4. MAGIA CON CANVAS: Juntar el QR y el texto (CORREGIDO)
     // =========================================================
 
     // Configuramos un lienzo más alto usando TU variable 'nodeCanvas'
     const canvasWidth = 400;
-    const canvasHeight = 460;
+    const canvasHeight = 400;
     const canvas = nodeCanvas.createCanvas(canvasWidth, canvasHeight);
     const ctx = canvas.getContext('2d');
 
@@ -107,13 +106,13 @@ class VehiculoService {
     ctx.drawImage(qrImage, 0, 0, 400, 400);
 
     // C) Escribir la Placa en el espacio en blanco de abajo
-    ctx.fillStyle = '#000000'; // Color del texto (Negro)
-    ctx.font = 'bold 36px sans-serif'; // Tamaño y tipo de fuente
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    //ctx.fillStyle = '#000000'; // Color del texto (Negro)
+    //ctx.font = 'bold 36px sans-serif'; // Tamaño y tipo de fuente
+    //ctx.textAlign = 'center';
+   //ctx.textBaseline = 'middle';
 
     // Posicionamos el texto justo en el centro del ancho y en el espacio inferior
-    ctx.fillText(`PLACA: ${placa.toUpperCase()}`, canvasWidth / 2, 430);
+    //ctx.fillText(`PLACA: ${placa.toUpperCase()}`, canvasWidth / 2, 430);
 
     // 5. Convertir nuestro nuevo lienzo a un Buffer y retornarlo
     return canvas.toBuffer('image/png');

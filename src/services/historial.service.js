@@ -7,40 +7,50 @@ class HistorialService {
     try {
       // 🪄 Hacemos JOIN con zonas, sedes y la persona/usuario (Guarda)
       const query = `
-        SELECT 
-            r.id, 
-            v.placa as vehiculo, 
-            s.nombre as sede, 
-            z.nombre as zona,
-            p_guarda.nombres_completos as guarda,
-            r.fecha_entrada as fecha_ingreso, 
-            r.fecha_salida, 
-            'Usuario' as tipo
-        FROM registros_parqueo r
-        JOIN vehiculos v ON r.vehiculo_id = v.id
-        JOIN zonas_parqueo z ON r.zona_id = z.id
-        JOIN sedes s ON z.sede_id = s.id
-        LEFT JOIN usuarios u_guarda ON r.usuario_admin_id = u_guarda.id
-        LEFT JOIN personas p_guarda ON u_guarda.persona_id = p_guarda.id
-        
-        UNION ALL
-        
-        SELECT 
-            vp.id, 
-            vp.placa as vehiculo, 
-            s.nombre as sede, 
-            z.nombre as zona,
-            p_guarda.nombres_completos as guarda,
-            vp.fecha_entrada as fecha_ingreso, 
-            vp.fecha_salida, 
-            'Visitante' as tipo
-        FROM visitantes_parqueo vp
-        JOIN zonas_parqueo z ON vp.zona_id = z.id
-        JOIN sedes s ON z.sede_id = s.id
-        LEFT JOIN usuarios u_guarda ON vp.usuario_admin_id = u_guarda.id
-        LEFT JOIN personas p_guarda ON u_guarda.persona_id = p_guarda.id
-        
-        ORDER BY fecha_ingreso DESC
+         SELECT 
+          r.id,
+          v.placa AS vehiculo,
+          v.tipo::TEXT AS tipo_vehiculo,
+          v.url_foto AS foto_vehiculo,
+          s.nombre AS sede,
+          s.ubicacion AS direccion_sede,
+          z.nombre AS zona,
+          z.codigo_zona,
+          z.url_foto AS foto_zona,
+          p_guarda.nombres_completos AS guarda,
+          r.fecha_entrada AS fecha_ingreso, 
+          r.fecha_salida, 
+          'Usuario' AS tipo
+      FROM registros_parqueo r
+      JOIN vehiculos v ON r.vehiculo_id = v.id
+      JOIN zonas_parqueo z ON r.zona_id = z.id
+      JOIN sedes s ON z.sede_id = s.id
+      LEFT JOIN usuarios u_guarda ON r.usuario_admin_id = u_guarda.id
+      LEFT JOIN personas p_guarda ON u_guarda.persona_id = p_guarda.id
+
+      UNION ALL
+
+      SELECT 
+          vp.id,
+          vp.placa AS vehiculo,
+          vp.tipo_vehiculo::TEXT AS tipo_vehiculo,
+          vp.url_foto AS foto_vehiculo,
+          s.nombre AS sede,
+          s.ubicacion AS direccion_sede,
+          z.nombre AS zona,
+          z.codigo_zona,
+          z.url_foto AS foto_zona,
+          p_guarda.nombres_completos AS guarda,
+          vp.fecha_entrada AS fecha_ingreso,
+          vp.fecha_salida,
+          'Visitante' AS tipo
+      FROM visitantes_parqueo vp
+      JOIN zonas_parqueo z ON vp.zona_id = z.id
+      JOIN sedes s ON z.sede_id = s.id
+      LEFT JOIN usuarios u_guarda ON vp.usuario_admin_id = u_guarda.id
+      LEFT JOIN personas p_guarda ON u_guarda.persona_id = p_guarda.id
+
+      ORDER BY fecha_ingreso DESC;
       `;
       const { rows } = await pool.query(query);
       return rows;
@@ -64,13 +74,18 @@ class HistorialService {
     }
 
     try {
-      // 🪄 Agregamos los JOINs para Sede, Zona y Guarda
+      // Agregamos los JOINs para Sede, Zona y Guarda
       const query = `
         SELECT 
             r.id, 
-            v.placa as vehiculo, 
-            s.nombre as sede, 
+            v.placa as vehiculo,
+            v.tipo as tipo_vehiculo,
+            v.url_foto as foto_vehiculo, 
+            s.nombre as sede,
+            s.ubicacion as direccion_sede,
             z.nombre as zona,
+            z.codigo_zona,
+            z.url_foto as foto_zona,
             p_guarda.nombres_completos as guarda,
             r.fecha_entrada as fecha_ingreso, 
             r.fecha_salida, 

@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const ApiError = require('../utils/ApiError');
 
 class ReportesService {
   // 1. Horas Pico (Combina Oficiales y Visitantes)
@@ -22,27 +23,147 @@ class ReportesService {
 
   // 2. Distribución por Tipo de Vehículo (Oficiales vs Visitantes)
   async reporteDistribucion() {
+  try {
     const query = `
-      SELECT 'Oficial - ' || v.tipo AS categoria, COUNT(r.id) AS cantidad
-      FROM registros_parqueo r
-      JOIN vehiculos v ON r.vehiculo_id = v.id
-      GROUP BY v.tipo
-      UNION ALL
-      SELECT 'Visitante', COUNT(id) AS cantidad
-      FROM visitantes_parqueo
-      GROUP BY 'Visitante'
-      ORDER BY cantidad DESC;
+      WITH categorias AS (
+        -- Todas las clasificaciones oficiales
+        SELECT
+            'Oficial - ' || t.tipo::TEXT AS categoria
+        FROM unnest(enum_range(NULL::tipo_vehiculo)) AS t(tipo)
+
+        UNION ALL
+
+        SELECT 'Visitante'
+      ),
+
+      vehiculos_dentro AS (
+
+          -- ==========================================
+          -- VEHÍCULOS OFICIALES
+          -- ==========================================
+
+          SELECT
+              'Oficial - ' || v.tipo::TEXT AS categoria,
+              r.fecha_entrada AS fecha_ingreso,
+
+              jsonb_build_object(
+                  'registro_id', r.id,
+                  'vehiculo_id', v.id,
+                  'placa', v.placa,
+                  'propietario', p.nombres_completos,
+                  'marca', v.marca,
+                  'modelo', v.modelo,
+                  'color', v.color,
+                  'tipo_vehiculo', v.tipo::TEXT,
+                  'fecha_ingreso', r.fecha_entrada,
+                  'qr_token', v.qr_token,
+                  'url_foto', v.url_foto,
+                  'codigo_zona', z.codigo_zona,
+                  'zona', z.nombre
+              ) AS detalle
+
+          FROM registros_parqueo r
+
+          INNER JOIN vehiculos v
+              ON r.vehiculo_id = v.id
+
+          LEFT JOIN personas p
+              ON v.persona_id = p.id
+
+          LEFT JOIN zonas_parqueo z
+              ON r.zona_id = z.id
+
+          WHERE r.fecha_salida IS NULL
+
+
+          UNION ALL
+
+
+          -- ==========================================
+          -- VEHÍCULOS VISITANTES
+          -- ==========================================
+
+          SELECT
+              'Visitante' AS categoria,
+              vp.fecha_entrada AS fecha_ingreso,
+
+              jsonb_build_object(
+                  'registro_id', vp.id,
+                  'vehiculo_id', NULL,
+                  'placa', vp.placa,
+                  'propietario', NULL,
+                  'marca', NULL,
+                  'modelo', NULL,
+                  'color', NULL,
+                  'tipo_vehiculo', vp.tipo_vehiculo::TEXT,
+                  'fecha_ingreso', vp.fecha_entrada,
+                  'qr_token', NULL,
+                  'url_foto', vp.url_foto,
+                  'observacion', vp.observacion,
+                  'codigo_zona', z.codigo_zona,
+                  'zona', z.nombre
+              ) AS detalle
+
+          FROM visitantes_parqueo vp
+
+          LEFT JOIN zonas_parqueo z
+              ON vp.zona_id = z.id
+
+          WHERE vp.fecha_salida IS NULL
+      )
+
+      -- ==========================================
+      -- RESULTADO AGRUPADO
+      -- ==========================================
+
+      SELECT
+          c.categoria,
+
+          COUNT(vd.detalle) AS cantidad,
+
+          COALESCE(
+              jsonb_agg(
+                  vd.detalle
+                  ORDER BY vd.fecha_ingreso DESC
+              ) FILTER (
+                  WHERE vd.detalle IS NOT NULL
+              ),
+              '[]'::JSONB
+          ) AS vehiculos
+
+      FROM categorias c
+
+      LEFT JOIN vehiculos_dentro vd
+          ON c.categoria = vd.categoria
+
+      GROUP BY c.categoria
+
+      ORDER BY cantidad DESC, c.categoria ASC;
     `;
+
     const { rows } = await pool.query(query);
+
     return rows;
+
+  } catch (error) {
+    console.error(
+      'Error BD en reporteDistribucion:',
+      error.message
+    );
+
+    throw new ApiError(
+      500,
+      'Error al obtener la distribución de vehículos dentro de la institución.'
+    );
   }
+}
 
   // 3. Auditoría de Guardas (Productividad)
   async reporteAuditoriaGuardas() {
     const query = `
       SELECT 
-        u.nombre,
-        u.email,
+        
+        u.correo,
         COUNT(rp.id) AS ingresos_oficiales,
         COUNT(vp.id) AS ingresos_visitantes,
         (COUNT(rp.id) + COUNT(vp.id)) AS total_gestionado
@@ -50,7 +171,7 @@ class ReportesService {
       LEFT JOIN registros_parqueo rp ON rp.usuario_admin_id = u.id
       LEFT JOIN visitantes_parqueo vp ON vp.usuario_admin_id = u.id
       WHERE u.rol = 'Guarda' OR u.rol = 'Administrador'
-      GROUP BY u.id, u.nombre, u.email
+      GROUP BY u.id,  u.correo
       ORDER BY total_gestionado DESC;
     `;
     const { rows } = await pool.query(query);
