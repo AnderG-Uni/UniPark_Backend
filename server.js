@@ -4,7 +4,7 @@ const { logger } = require('./src/config/logger');
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   logger.info(` Servidor: corriendo en el puerto ${PORT}`);
   logger.info(` Entorno: ${process.env.NODE_ENV || 'development'}`);
   logger.info(` Base de Datos: ${process.env.DB_HOST}:${process.env.DB_PORT}`);
@@ -22,8 +22,13 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (err) => {
   logger.error(' UNHANDLED REJECTION! Apagando de forma segura...');
   logger.error(`${err.name}: ${err.message}`);
-  // Cerramos el servidor suavemente antes de salir
-  server.close(() => {
+  
+  // Se apaga el servidor de forma segura para que no queden conexiones abiertas y se pueda reiniciar
+  if (server) {
+    server.close(() => {
+      process.exit(1);
+    });
+  } else {
     process.exit(1);
-  });
+  }
 });

@@ -18,6 +18,7 @@ const infraestructuraRoutes = require('./routes/infraestructura.routes');
 const reportesRoutes = require('./routes/reportes.routes');
 const historialRoutes = require('./routes/historial.routes');
 const notificacionRoutes = require('./routes/notificacion.routes');
+const healthRoutes = require('./routes/health.routes');
 
 //servicio de crontabs
 const { iniciarCronJobs } = require('./utils/cronJobs');
@@ -70,6 +71,9 @@ app.use(auditMiddleware);
 
 // Rutas para servir archivos estáticos (como imágenes de vehículos)
 app.use('/assets', vehiculoRoutes, express.static(path.join(__dirname, 'assets')));
+
+// Ruta de Health Check (desprotegida)
+app.use('/api/v1/security/health-check-unipark', healthRoutes);
 
 // Rutas :  de cada modulo (Autenticación, Usuarios, Personas, Vehículos, Zonas, Accesos, Infraestructura)
 app.use('/api/v1/auth', authRoutes);

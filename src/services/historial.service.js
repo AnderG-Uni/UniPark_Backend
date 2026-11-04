@@ -20,13 +20,17 @@ class HistorialService {
           p_guarda.nombres_completos AS guarda,
           r.fecha_entrada AS fecha_ingreso, 
           r.fecha_salida, 
-          'Usuario' AS tipo
+          'Usuario' AS tipo,
+          p_dueno.nombres_completos AS nombre_propietario,
+          u_dueno.correo AS correo_propietario
       FROM registros_parqueo r
       JOIN vehiculos v ON r.vehiculo_id = v.id
       JOIN zonas_parqueo z ON r.zona_id = z.id
       JOIN sedes s ON z.sede_id = s.id
       LEFT JOIN usuarios u_guarda ON r.usuario_admin_id = u_guarda.id
       LEFT JOIN personas p_guarda ON u_guarda.persona_id = p_guarda.id
+      LEFT JOIN personas p_dueno ON v.persona_id = p_dueno.id
+      LEFT JOIN usuarios u_dueno ON p_dueno.id = u_dueno.persona_id
 
       UNION ALL
 
@@ -43,7 +47,9 @@ class HistorialService {
           p_guarda.nombres_completos AS guarda,
           vp.fecha_entrada AS fecha_ingreso,
           vp.fecha_salida,
-          'Visitante' AS tipo
+          'Visitante' AS tipo,
+          'No registrado en el sistema.' AS nombre_propietario,
+          NULL AS correo_propietario
       FROM visitantes_parqueo vp
       JOIN zonas_parqueo z ON vp.zona_id = z.id
       JOIN sedes s ON z.sede_id = s.id
